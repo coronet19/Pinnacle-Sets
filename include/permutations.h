@@ -23,4 +23,6 @@ public:
     static std::vector<uint8_t> getSuperpermutationFast(std::vector<std::vector<uint8_t>> perms);
     static bool isSuperpermutation(const std::vector<std::vector<uint8_t>>& perms, const std::vector<uint8_t>& superpermutation);
     static std::vector<std::vector<uint8_t>> createOverlapMatrix(const std::vector<std::vector<uint8_t>>& perms);
+    static std::vector<std::vector<uint8_t>> createPinnacleSets(int m, int n);
+    static bool isValidLabeling(std::vector<uint8_t> perm, std::vector<uint8_t> pinnacleSet, int m, int n);
 };

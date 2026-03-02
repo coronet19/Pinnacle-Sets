@@ -207,3 +207,79 @@ std::vector<std::vector<uint8_t>> Permutations::createOverlapMatrix(const std::v
 
     return res;
 }
+
+// WARNING: AI Slop Ahead
+// returns a sorted list of all unique subsets of integers ranging
+// from min(m, n)+1 --> m+n. m+n is always an element of each subset.
+std::vector<std::vector<uint8_t>> Permutations::createPinnacleSets(int m, int n) {
+    std::vector<std::vector<uint8_t>> res;
+
+    // The range starts at min(m, n) + 1
+    int start = std::min(m, n) + 1;
+    int mandatoryElement = m + n;
+
+    // Handle the case where the range is invalid (e.g., m+n < start)
+    if (mandatoryElement < start) {
+        res.push_back({static_cast<uint8_t>(mandatoryElement)});
+        return res;
+    }
+
+    // 1. Build the pool of optional numbers: [start, mandatoryElement - 1]
+    std::vector<uint8_t> pool;
+    for (int i = start; i < mandatoryElement; ++i) {
+        pool.push_back(static_cast<uint8_t>(i));
+    }
+
+    // 2. Generate all subsets of the pool using bitmasking
+    // Total subsets = 2^(pool.size())
+    size_t numSubsets = 1ULL << pool.size();
+
+    for (size_t i = 0; i < numSubsets; ++i) {
+        std::vector<uint8_t> currentSubset;
+
+        for (size_t j = 0; j < pool.size(); ++j) {
+            if ((i >> j) & 1) {
+                currentSubset.push_back(pool[j]);
+            }
+        }
+
+        // 3. Always include m + n
+        currentSubset.push_back(static_cast<uint8_t>(mandatoryElement));
+
+        // Ensure individual subset is sorted (e.g., {2, 4, 5})
+        std::sort(currentSubset.begin(), currentSubset.end());
+
+        res.push_back(currentSubset);
+    }
+
+    // 4. Sort the final list of subsets lexicographically
+    std::sort(res.begin(), res.end());
+
+    return res;
+}
+
+// graph[0] --> graph[left - 1] is left side, graph[left] --> graph.end() is right side.
+// All nodes on left side are connected to all nodes on right side, and all nodes on
+// the right side are connected to all nodes on left side (i.e. 'graph' is bipartite).
+// Returns whether or not pinnacleSet is a valid pinnacle set of the graph.
+bool Permutations::isValidLabeling(std::vector<uint8_t> graph, std::vector<uint8_t> pinnacleSet, int left, int right){
+    sort(graph.begin(), graph.begin() + left); // sort left side
+    sort(graph.begin() + left, graph.end()); // sort right side
+
+    std::vector<uint8_t> pinnacles;
+
+    for(int i = 0; i < left; ++i){ // loop through left half of graph
+        if(graph[i] > graph[graph.size() - 1]){
+            pinnacles.push_back(graph[i]);
+        }
+    }
+
+    for(int i = left; i < graph.size(); ++i){ // loop through right half of graph
+        if(graph[i] > graph[left - 1]){
+            pinnacles.push_back(graph[i]);
+        }
+    }
+
+    sort(pinnacles.begin(), pinnacles.end());
+    return pinnacles == pinnacleSet;
+}
