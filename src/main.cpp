@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <iomanip>
 
 #include "../include/permutations.h"
 
@@ -55,6 +56,8 @@ int main(int argc, char** argv){
     // std::vector<std::vector<uint8_t>> perms = Permutations::getPermutations(m + n);
     std::vector<int> counts(pinnacleSets.size(), 0);
     int total = 0;
+    int iterations = 0;
+    int totalPerms = factorial(m + n);
 
     std::vector<uint8_t> perm;
     for(int i = 1; i <= m + n; ++i){
@@ -64,6 +67,14 @@ int main(int argc, char** argv){
     do{
         for(int i = 0; i < pinnacleSets.size(); ++i){
             counts[i] += Permutations::isValidLabeling(perm, pinnacleSets[i], m, n);
+        }
+
+        ++iterations;
+        if(iterations % 10000 == 0){
+            float f = 100 * (float)iterations / (float)totalPerms;
+            printf("Permutations Checked: %d / %d, ", iterations, totalPerms);
+            std::cout << std::fixed << std::setprecision(2) << f << "%" << std::endl;
+            // std::cout << "Permutations Checked: " << iterations << std::endl;
         }
     } while(std::next_permutation(perm.begin(), perm.end()));
 
