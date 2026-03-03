@@ -258,6 +258,23 @@ std::vector<std::vector<uint8_t>> Permutations::createPinnacleSets(int m, int n)
     return res;
 }
 
+
+std::vector<std::vector<uint8_t>> Permutations::createBipartitePinnacleSets(int m, int n) {
+    std::vector<std::vector<uint8_t>> res;
+
+    for(int i = std::min(m, n) + 1; i <= m + n; ++i){
+        std::vector<uint8_t> curr;
+
+        for(int j = i; j <= m + n; ++j){
+            curr.push_back(j);
+        }
+
+        res.push_back(curr);
+    }
+
+    return res;
+}
+
 // graph[0] --> graph[left - 1] is left side, graph[left] --> graph.end() is right side.
 // All nodes on left side are connected to all nodes on right side, and all nodes on
 // the right side are connected to all nodes on left side (i.e. 'graph' is bipartite).
