@@ -52,15 +52,24 @@ int main(int argc, char** argv){
 
     // std::vector<std::vector<uint8_t>> pinnacleSets = Permutations::createPinnacleSets(m, n);
     std::vector<std::vector<uint8_t>> pinnacleSets = Permutations::createBipartitePinnacleSets(m, n);
-    std::vector<std::vector<uint8_t>> perms = Permutations::getPermutations(m + n);
+    // std::vector<std::vector<uint8_t>> perms = Permutations::getPermutations(m + n);
+    std::vector<int> counts(pinnacleSets.size(), 0);
     int total = 0;
 
-    for(const auto& pinnacleSet : pinnacleSets){
-        int count = 0;
+    std::vector<uint8_t> perm;
+    for(int i = 1; i <= m + n; ++i){
+        perm.push_back(i);
+    }
 
-        for(const auto& perm : perms){
-            count += Permutations::isValidLabeling(perm, pinnacleSet, m, n);
+    do{
+        for(int i = 0; i < pinnacleSets.size(); ++i){
+            counts[i] += Permutations::isValidLabeling(perm, pinnacleSets[i], m, n);
         }
+    } while(std::next_permutation(perm.begin(), perm.end()));
+
+    for(int i = 0; i < counts.size(); ++i){
+        int count = counts[i];
+        const auto& pinnacleSet = pinnacleSets[i];
 
         if(count == 0) continue;
         total += count;
@@ -80,23 +89,6 @@ int main(int argc, char** argv){
             << "! * "
             << r
             << std::endl;
-
-        int a = std::max(m, n) - pinnacleSet.size() + 1;
-        int res = -1;
-
-        // if(pinnacleSet.size() > (std::max(m, n) - std::min(m, n) + 1)){
-        //     res = (a * (a + 1) * factorial(m) * factorial(n)) / 2;
-        //     std::cout << "res: " << res << std::endl;
-        // } else{
-        //     // res = factorial(m + n) / std::pow(2, pinnacleSet.size());
-        // }
-
-        // if(pinnacleSet.size() > std::min(m, n)){
-            // res = nPr(std::max(m, n), pinnacleSet.size());
-            // res = factorial(pinnacleSet.size()) * nPr(std::max(m, n), pinnacleSet.size());
-            // std::cout << "res: " << res << std::endl;
-        // }
-        // res = factorial(pinnacleSet.size()) * nPr(std::max(m, n), pinnacleSet.size());
     }
 
     std::cout << "Sum = "
