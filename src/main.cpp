@@ -4,7 +4,7 @@
 #include <sstream>
 #include <algorithm>
 
-#include "../include./permutations.h"
+#include "../include/permutations.h"
 
 
 int main(int argc, char** argv){
