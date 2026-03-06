@@ -26,6 +26,35 @@ int nCr(int n, int r){
     return factorial(n) / (factorial(r) * factorial(n - r));
 }
 
+int calculateFreeLabels(int m, int n, int k){
+    if(m == k){
+        return n - 1;
+    } else{
+        return m + n - k - 1;
+    }
+}
+
+int calculateLabelings(int m, int n, int k){
+    int f = calculateFreeLabels(m, n, k);
+    int res;
+
+    if(k > n){
+        res = n * nPr(m, k) * factorial(f);
+        // res = nPr(m, k) * nCr(n, n - 1) * factorial(f);
+        // res = nPr(m, k) * factorial(n) * factorial(f);
+    } else if(k == n){
+        res = n * nPr(m, k) * factorial(f) + factorial(m) * factorial(n);
+        // res = nPr(m, k) * nCr(n, n - 1) * factorial(f) + factorial(m) * factorial(n);
+        // res = nPr(m, k) * factorial(f) + factorial(m) * factorial(n) * 2;
+    } else{
+        // int lesser = calculateLabelings(m, n, n);// + factorial(m);
+        // res = pow(2, n - k) * lesser + pow(2, n - k - 1) * factorial(m + 1);
+        res = -1;
+    }
+
+    return res;
+}
+
 int main(int argc, char** argv){
     int m, n;
     std::string nums;
@@ -90,16 +119,16 @@ int main(int argc, char** argv){
             std::cout << (int)pinnacleSet[i] << ((i == pinnacleSet.size() - 1) ? "}, " : ", ");
         }
 
-        double r = (double)count / ((double)factorial(m) * (double)factorial(n));
-        std::cout << "Valid Labelings: "
-            << count
-            << " = "
-            << m
-            << "! * "
-            << n
-            << "! * "
-            << r
-            << std::endl;
+        int r = count / (factorial(m) * factorial(n));
+        printf("Valid Labelings: %d = %d! * %d! * %d!\n", count, m, n, r);
+
+        if(m > 0 && n > 0 && pinnacleSet.size() > 0){
+            int predLabels = calculateLabelings(m, n, pinnacleSet.size());
+            if(predLabels == -1) continue;
+            // printf("m = %d, n = %d, k = %d\n", m, n, pinnacleSet.size());
+            // int predLabels = calculateLabelings(m, n, pinnacleSet.size());
+            printf("Predicted Labels: %d\n", predLabels);
+        }
     }
 
     std::cout << "Sum = "
