@@ -40,16 +40,12 @@ int calculateLabelings(int m, int n, int k){
 
     if(k > n){
         res = n * nPr(m, k) * factorial(f);
-        // res = nPr(m, k) * nCr(n, n - 1) * factorial(f);
-        // res = nPr(m, k) * factorial(n) * factorial(f);
-    } else if(k == n){
-        res = n * nPr(m, k) * factorial(f) + factorial(m) * factorial(n);
-        // res = nPr(m, k) * nCr(n, n - 1) * factorial(f) + factorial(m) * factorial(n);
-        // res = nPr(m, k) * factorial(f) + factorial(m) * factorial(n) * 2;
+    // } else if(k <= n){
+    //     res = n * nPr(m, k) * factorial(f) + factorial(m) * factorial(n);
     } else{
-        // int lesser = calculateLabelings(m, n, n);// + factorial(m);
-        // res = pow(2, n - k) * lesser + pow(2, n - k - 1) * factorial(m + 1);
-        res = -1;
+        int left = n * nPr(m, k);
+        int right = m * nPr(n, k);
+        res = factorial(f) * (left + right);
     }
 
     return res;
