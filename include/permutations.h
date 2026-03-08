@@ -18,6 +18,9 @@ private:
     static int getOverlap(const std::vector<uint8_t>& s1, const std::vector<uint8_t>& s2);
 
 public:
+    static long long factorial(long long n);
+    static int nPr(int n, int r);
+    static int nCr(int n, int r);
     static std::vector<std::vector<uint8_t>> getPermutations(int n);
     static std::vector<uint8_t> getSuperpermutation(std::vector<std::vector<uint8_t>> perms);
     static std::vector<uint8_t> getSuperpermutationFast(std::vector<std::vector<uint8_t>> perms);

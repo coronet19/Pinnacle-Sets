@@ -7,31 +7,9 @@
 
 #include "../include/permutations.h"
 
-long long factorial(long long n){
-    if(n == 1 || n == 0) return 1;
-
-    if(n < 0){
-        std::cout << "n<0 in factorial" << std::endl;
-        return 0;
-    }
-
-    return n * factorial(n - 1);
-}
-
-int nPr(int n, int r){
-    return factorial(n) / factorial(n - r);
-}
-
-int nCr(int n, int r){
-    return factorial(n) / (factorial(r) * factorial(n - r));
-}
 
 int calculateFreeLabels(int m, int n, int k){
-    if(m == k){
-        return n - 1;
-    } else{
-        return m + n - k - 1;
-    }
+    return m + n - k - 1;
 }
 
 int calculateLabelings(int m, int n, int k){

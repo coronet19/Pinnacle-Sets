@@ -8,6 +8,25 @@ size_t Permutations::getRandomIndex(const size_t s){
     return dist(gen);
 }
 
+long long Permutations::factorial(long long n){
+    if(n == 1 || n == 0) return 1;
+
+    if(n < 0){
+        // std::cout << "n<0 in factorial" << std::endl;
+        return -1;
+    }
+
+    return n * Permutations::factorial(n - 1);
+}
+
+int Permutations::nPr(int n, int r){
+    return Permutations::factorial(n) / Permutations::factorial(n - r);
+}
+
+int Permutations::nCr(int n, int r){
+    return Permutations::factorial(n) / (Permutations::factorial(r) * Permutations::factorial(n - r));
+}
+
 void Permutations::backtrack(int start, int n, std::vector<uint8_t>& current, std::vector<std::vector<uint8_t>>& res){
     if(start == n){
         res.push_back(current);
