@@ -17,13 +17,13 @@ int calculateLabelings(int m, int n, int k){
     int res;
 
     if(k > n){
-        res = n * nPr(m, k) * factorial(f);
+        res = n * Permutations::nPr(m, k) * Permutations::factorial(f);
     // } else if(k <= n){
     //     res = n * nPr(m, k) * factorial(f) + factorial(m) * factorial(n);
     } else{
-        int left = n * nPr(m, k);
-        int right = m * nPr(n, k);
-        res = factorial(f) * (left + right);
+        int left = n * Permutations::nPr(m, k);
+        int right = m * Permutations::nPr(n, k);
+        res = Permutations::factorial(f) * (left + right);
     }
 
     return res;
@@ -60,7 +60,7 @@ int main(int argc, char** argv){
     std::vector<int> counts(pinnacleSets.size(), 0);
     int total = 0;
     int iterations = 0;
-    int totalPerms = factorial(m + n);
+    int totalPerms = Permutations::factorial(m + n);
 
     std::vector<uint8_t> perm;
     for(int i = 1; i <= m + n; ++i){
@@ -93,7 +93,7 @@ int main(int argc, char** argv){
             std::cout << (int)pinnacleSet[i] << ((i == pinnacleSet.size() - 1) ? "}, " : ", ");
         }
 
-        int r = count / (factorial(m) * factorial(n));
+        int r = count / (Permutations::factorial(m) * Permutations::factorial(n));
         printf("Valid Labelings: %d = %d! * %d! * %d!\n", count, m, n, r);
 
         if(m > 0 && n > 0 && pinnacleSet.size() > 0){
@@ -114,7 +114,7 @@ int main(int argc, char** argv){
         << "! * "
         << n
         << "! * "
-        << nCr(m + n, std::max(m, n))
+        << Permutations::nCr(m + n, std::max(m, n))
         << std::endl;
 
 
