@@ -8,51 +8,16 @@
 #include "../include/permutations.h"
 
 
-int calculateFreeLabels(int m, int n, int k){
-    return m + n - k - 1;
-}
-
-int calculateLabelings(int m, int n, int k){
-    int f = calculateFreeLabels(m, n, k);
-    int res;
-
-    if(k > n){
-        res = n * Permutations::nPr(m, k) * Permutations::factorial(f);
-    // } else if(k <= n){
-    //     res = n * nPr(m, k) * factorial(f) + factorial(m) * factorial(n);
-    } else{
-        int left = n * Permutations::nPr(m, k);
-        int right = m * Permutations::nPr(n, k);
-        res = Permutations::factorial(f) * (left + right);
-    }
-
-    return res;
-}
 
 int main(int argc, char** argv){
     int m, n;
     std::string nums;
-
-    // Assumes smallest labeling of the set is '1'.
-    // m+n is always an element in the pinnacle set.
-    // std::vector<int> pinnacleSet;
 
     std::cout << "Enter m: ";
     std::cin >> m;
 
     std::cout << "Enter n: ";
     std::cin >> n;
-
-    // buffer formatting or something
-    // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    // std::cout << "Enter Pinnacle Set: ";
-    // std::getline(std::cin, nums);
-    // parse pinnacle set into vector<int>
-    // std::stringstream ss(nums);
-    // for(int temp; ss >> temp;){
-    //     pinnacleSet.push_back(temp);
-    // }
-    // sort(pinnacleSet.begin(), pinnacleSet.end());
 
     // std::vector<std::vector<uint8_t>> pinnacleSets = Permutations::createPinnacleSets(m, n);
     std::vector<std::vector<uint8_t>> pinnacleSets = Permutations::createBipartitePinnacleSets(m, n);

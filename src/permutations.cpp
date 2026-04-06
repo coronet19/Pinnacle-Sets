@@ -319,3 +319,6 @@ bool Permutations::isValidLabeling(std::vector<uint8_t> graph, std::vector<uint8
     sort(pinnacles.begin(), pinnacles.end());
     return pinnacles == pinnacleSet;
 }
+
+
+void
