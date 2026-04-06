@@ -1,0 +1,9 @@
+todo:
+
+1. create a generic graph class that takes in a graph g of size n with some structuring.
+    - this class should have functions for computing the number of labelings of
+    g and a generic function for iterating through the different pinnacle sets of g.
+
+
+2. we can compute pinnacle sets of size k by looking at every independent set of size k
+    - this lets us iterate through labelings faster
