@@ -3,10 +3,8 @@
 
 // Gets the next lexicographic pinnacle set that
 // maintains strictly increasing ordering
-bool CompleteGraph::getNextPinnacleSet(std::vector<int>& p) {
-    if (p.size() < 2) {
-        // If there's only one element, and it must be 'size',
-        // there are no other combinations to generate.
+bool CompleteGraph::getNextPinnacleSet(std::vector<int>& p){
+    if(p.size() < 2){
         return false;
     }
 
@@ -21,16 +19,16 @@ bool CompleteGraph::getNextPinnacleSet(std::vector<int>& p) {
 
     // 1. Find the rightmost element that can be incremented.
     // We start from k-2 because p[k-1] (the last element) is fixed.
-    for (int i = k - 2; i >= 0; --i) {
+    for(int i = k - 2; i >= 0; --i){
         int ceiling = this->size - (k - 1 - i);
-        if (p[i] < ceiling) {
+        if(p[i] < ceiling){
             targetIdx = i;
             break;
         }
     }
 
     // If no such element exists, we are at the lexicographical maximum.
-    if (targetIdx == -1) {
+    if(targetIdx == -1){
         return false;
     }
 
@@ -39,7 +37,7 @@ bool CompleteGraph::getNextPinnacleSet(std::vector<int>& p) {
 
     // 3. Reset all elements to the right (up to k-2) to be strictly increasing.
     // This ensures we get the smallest possible sequence following our increment.
-    for (int j = targetIdx + 1; j < k - 1; ++j) {
+    for(int j = targetIdx + 1; j < k - 1; ++j){
         p[j] = p[j - 1] + 1;
     }
 
@@ -57,13 +55,13 @@ std::vector<std::vector<int>> CompleteGraph::getAdmissablePinnacleSets(){
     // 2. Iterate through EVERY combination of the pinnacles
     do{
         // 3. Iterate through EVERY permutation of the labels (1, 2, 3, ..., size)
-        do {
+        do{
             // 4. Check if the current permutation of graph values
             // makes the pinnacles set valid for this edgeMap
-            if (this->isValidLabeling(this->pinnacles)) {
+            if(this->isValidLabeling(this->pinnacles)){
                 validLabelings.push_back(this->pinnacles);
             }
-        } while (std::next_permutation(this->graph.begin(), this->graph.end()));
+        } while(std::next_permutation(this->graph.begin(), this->graph.end()));
     } while(CompleteGraph::getNextPinnacleSet(this->pinnacles));
 
 
@@ -71,25 +69,19 @@ std::vector<std::vector<int>> CompleteGraph::getAdmissablePinnacleSets(){
 }
 
 bool CompleteGraph::isValidLabeling(const std::vector<int> pinnacleSet){
-    for (const auto& [vertexIdx, neighbors] : this->edgeMap) {
+    for(const auto& [vertexIdx, neighbors] : this->edgeMap){
         int vertexValue = this->graph[vertexIdx];
-
-        // 1. Check if this specific vertex value is in our "target" pinnacle set
-        // Use std::binary_search since pinnacleSet is sorted (much faster than std::find)
         bool shouldBePinnacle = std::binary_search(pinnacleSet.begin(), pinnacleSet.end(), vertexValue);
+        bool actsAsPinnacle = !neighbors.empty();
 
-        // 2. Determine if it ACTUALLY acts as a pinnacle in the current graph
-        bool actsAsPinnacle = !neighbors.empty(); // An isolated vertex usually isn't a pinnacle
-
-        for (int edgeIdx : neighbors) {
-            if (vertexValue <= this->graph[edgeIdx]) {
+        for(int edgeIdx : neighbors){
+            if(vertexValue <= this->graph[edgeIdx]){
                 actsAsPinnacle = false;
                 break;
             }
         }
 
-        // 3. If the graph structure doesn't match the set we're testing, it's invalid
-        if (actsAsPinnacle != shouldBePinnacle) {
+        if(actsAsPinnacle != shouldBePinnacle){
             return false;
         }
     }
