@@ -9,16 +9,8 @@ bool CompleteGraph::getNextPinnacleSet(std::vector<int>& p){
     }
 
     int k = static_cast<int>(p.size());
-
-    // The last element p[k-1] is fixed to this->size.
-    // The element at index i can at most be: (size - (k - 1 - i))
-    // Example: size=10, k=3. Set is {x, y, 10}.
-    // y can be at most 9. x can be at most 8.
-
     int targetIdx = -1;
 
-    // 1. Find the rightmost element that can be incremented.
-    // We start from k-2 because p[k-1] (the last element) is fixed.
     for(int i = k - 2; i >= 0; --i){
         int ceiling = this->size - (k - 1 - i);
         if(p[i] < ceiling){
@@ -27,16 +19,12 @@ bool CompleteGraph::getNextPinnacleSet(std::vector<int>& p){
         }
     }
 
-    // If no such element exists, we are at the lexicographical maximum.
     if(targetIdx == -1){
         return false;
     }
 
-    // 2. Increment the target element.
     p[targetIdx]++;
 
-    // 3. Reset all elements to the right (up to k-2) to be strictly increasing.
-    // This ensures we get the smallest possible sequence following our increment.
     for(int j = targetIdx + 1; j < k - 1; ++j){
         p[j] = p[j - 1] + 1;
     }
@@ -69,12 +57,19 @@ std::vector<std::vector<int>> CompleteGraph::getAdmissablePinnacleSets(){
 }
 
 bool CompleteGraph::isValidLabeling(const std::vector<int> pinnacleSet){
-    for(const auto& [vertexIdx, neighbors] : this->edgeMap){
+    // assert(edgeMap.size() == this->size);
+
+    if(edgeMap.size() != this->size){
+        return false;
+    }
+
+    for(int vertexIdx = 0; vertexIdx < this->edgeMap.size(); ++vertexIdx){
+        std::vector<int>* neighbors = &(edgeMap[vertexIdx]);
         int vertexValue = this->graph[vertexIdx];
         bool shouldBePinnacle = std::binary_search(pinnacleSet.begin(), pinnacleSet.end(), vertexValue);
-        bool actsAsPinnacle = !neighbors.empty();
+        bool actsAsPinnacle = !neighbors->empty();
 
-        for(int edgeIdx : neighbors){
+        for(int edgeIdx : *neighbors){
             if(vertexValue <= this->graph[edgeIdx]){
                 actsAsPinnacle = false;
                 break;

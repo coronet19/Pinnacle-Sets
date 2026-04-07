@@ -17,7 +17,7 @@ private:
 public:
     // Maps vertices to their edges, where edges are the indices of the graph vector.
     // i.e. edgeMap[vertex] -> { i_0, i_1, ... , i_n }, where 0 <= vertex < size
-    std::map<int, std::vector<int>> edgeMap;
+    inline static std::vector<std::vector<int>> edgeMap;
     std::vector<int> pinnacles;
     std::vector<int> graph;
     int size;
@@ -26,6 +26,9 @@ public:
         this->size = size;
         this->pinnacles = pinnacleSet;
         this->graph = std::vector<int>(size);
+
+        edgeMap.clear();
+        edgeMap.resize(size);
 
         std::sort(this->pinnacles.begin(), this->pinnacles.end());
 
