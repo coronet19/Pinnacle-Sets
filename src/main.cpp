@@ -16,8 +16,8 @@ int main(int argc, char** argv){
         std::cout << "RUNNING IN RELEASE MODE" << std::endl;
     #endif
 
-    int graphSize = 10;
-    std::vector<int> pinnacleSet({ 3, 5, 7, graphSize });
+    int graphSize = 7;
+    std::vector<int> pinnacleSet({ 3, graphSize });
     CompleteGraph g(graphSize, pinnacleSet);
     std::vector<std::vector<int>> admissablePinnacleSets = g.getAdmissablePinnacleSets();
     std::map<std::vector<int>, int> labelingsPerPinnacle;

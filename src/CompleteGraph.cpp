@@ -56,9 +56,7 @@ std::vector<std::vector<int>> CompleteGraph::getAdmissablePinnacleSets(){
     return validLabelings;
 }
 
-bool CompleteGraph::isValidLabeling(const std::vector<int> pinnacleSet){
-    // assert(edgeMap.size() == this->size);
-
+bool CompleteGraph::isValidLabeling(const std::vector<int>& pinnacleSet){
     if(edgeMap.size() != this->size){
         return false;
     }

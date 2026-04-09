@@ -1,8 +1,10 @@
 todo:
 
 1. create a generic graph class that takes in a graph g of size n with some structuring.
-    - this class should have functions for computing the number of labelings of
-    g and a generic function for iterating through the different pinnacle sets of g.
+    - this class should have functions for computing the number of labelings of g for a given
+    pinnacle set p, and a generic function for iterating through the different pinnacle sets of g.
+    - for a given pinnacle set P with size k, we need only check independent sets of size k
+    - independent sets of size k can be generated from independent sets of size k-1
 
 
 2. we can compute pinnacle sets of size k by looking at every independent set of size k

@@ -17,8 +17,11 @@ else()
     set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 endif()
 
-
-
-set(SOURCE_FILES src/main.cpp src/permutations.cpp src/CompleteGraph.cpp)
+set(SOURCE_FILES
+    src/main.cpp
+    src/permutations.cpp
+    src/CompleteGraph.cpp
+    src/graph.hpp
+)
 
 add_executable(pinnacleSets ${SOURCE_FILES})
