@@ -109,13 +109,104 @@ public:
         return true;
     }
 
-    std::vector<std::vector<int>> getAdmissablePinnacleSets(){
-        return {{}};
+    std::vector<std::vector<int>> getAdmissablePinnacleSets(std::vector<int> pinnacles) {
+        std::vector<std::vector<int>> admissable;
+        std::sort(pinnacles.begin(), pinnacles.end());
+
+        // Set up all labels [1...GRAPH_SIZE]
+        std::vector<int> allLabels(GRAPH_SIZE);
+        for(int i = 0; i < (int)GRAPH_SIZE; ++i) allLabels[i] = i + 1;
+
+        do {
+            if (pinnacles.empty() || pinnacles.back() != static_cast<int>(GRAPH_SIZE)) continue;
+
+            auto indySets = this->getIndependentSets(pinnacles.size());
+            bool possible = false;
+
+            for (const auto& indices : indySets) {
+                // Create a list of labels that ARE NOT pinnacles
+                std::vector<int> nonPinnacleLabels;
+                std::set<int> pSet(pinnacles.begin(), pinnacles.end());
+                for(int l : allLabels) if(!pSet.count(l)) nonPinnacleLabels.push_back(l);
+
+                // OPTIMIZATION: Instead of full permutation, try a "Safe" assignment:
+                // Put pinnacles on indices, others everywhere else.
+                this->resetValues();
+                std::vector<bool> isUsed(GRAPH_SIZE, false);
+                for(int idx : indices) isUsed[idx] = true;
+
+                // Simple assignment
+                int pIdx = 0, npIdx = 0;
+                for(int i = 0; i < (int)GRAPH_SIZE; ++i) {
+                    if(isUsed[i]) values[i] = pinnacles[pIdx++];
+                    else values[i] = nonPinnacleLabels[npIdx++];
+                }
+
+                // Now check if this SPECIFIC labeling works
+                if (this->isValidLabeling(pinnacles)) {
+                    possible = true;
+                    break;
+                }
+            }
+
+            if (possible) admissable.push_back(pinnacles);
+
+        } while (Graph<GRAPH_SIZE>::getNextPinnacleSet(pinnacles));
+
+        return admissable;
     }
 
-    // determines all independent sets of a given size
-    std::vector<std::vector<int>> getIndependentSets(int size){
-        return {{}};
+    // determines all independent sets of a given size n
+    std::vector<std::vector<int>> getIndependentSets(int n) {
+        std::vector<std::vector<int>> results;
+
+        // P: Candidate vertices (initially all)
+        // R: Current independent set being built
+        std::bitset<GRAPH_SIZE> initialP;
+        initialP.set();
+        std::bitset<GRAPH_SIZE> initialR;
+
+        // Recursive backtracking function
+        auto findSets = [&](auto self, std::bitset<GRAPH_SIZE> P, std::bitset<GRAPH_SIZE> R) -> void {
+            // Base Case: We reached the target size
+            if (R.count() == (size_t)n) {
+                std::vector<int> setIndices;
+                for (int i = 0; i < (int)GRAPH_SIZE; ++i) {
+                    if (R.test(i)) setIndices.push_back(i);
+                }
+                results.push_back(setIndices);
+                return;
+            }
+
+            // Pruning: If remaining candidates + current set < target size, stop
+            if (R.count() + P.count() < (size_t)n) {
+                return;
+            }
+
+            // Process candidates
+            while (P.any()) {
+                // Get the next candidate index using bit-jumping (countr_zero)
+                unsigned long long mask = P.to_ullong();
+                int v = std::countr_zero(mask); // ignore LSP error
+
+                // 1. Remove v from the candidate pool P
+                P.reset(v);
+
+                // 2. Create a new candidate pool for the next branch
+                // Crucial: The next candidates must NOT be adjacent to v
+                // We do this by ANDing P with the bitwise NOT of v's adjacency row
+                std::bitset<GRAPH_SIZE> nextP = P & ~(adjMatrix[v]);
+
+                // 3. Add v to our current result set R and recurse
+                std::bitset<GRAPH_SIZE> nextR = R;
+                nextR.set(v);
+
+                self(self, nextP, nextR);
+            }
+        };
+
+        findSets(findSets, initialP, initialR);
+        return results;
     }
 
     void resetValues(){
@@ -127,6 +218,48 @@ public:
 
     void setValues(const std::vector<int>& vals){
         std::copy(vals.begin(), vals.end(), this->values.begin());
+    }
+
+    void countHeapPermutations(const std::vector<std::vector<int>>& pinnacles, int size, int& count) {
+        if(size == 1){
+            for(const auto& p : pinnacles){
+                if(this->isValidLabeling(p)){
+                    ++count;
+                }
+            }
+
+            return;
+        }
+
+        for(int i = 0; i < size; i++){
+            countHeapPermutations(pinnacles, size - 1, count);
+
+            if(size & 1){
+                std::swap(this->values[0], this->values[size - 1]);
+            } else{
+                std::swap(this->values[i], this->values[size - 1]);
+            }
+        }
+    }
+
+    void countHeapPermutations(const std::vector<int>& p, int size, int& count) {
+        if(size == 1){
+            if(this->isValidLabeling(p)){
+                ++count;
+            }
+
+            return;
+        }
+
+        for(int i = 0; i < size; i++){
+            countHeapPermutations(p, size - 1, count);
+
+            if(size % 2 == 1){
+                std::swap(this->values[0], this->values[size - 1]);
+            } else{
+                std::swap(this->values[i], this->values[size - 1]);
+            }
+        }
     }
 
     static std::vector<std::bitset<GRAPH_SIZE>> makeCompleteGraph(const std::vector<int>& pinnacleSet){
