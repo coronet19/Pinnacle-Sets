@@ -9,8 +9,9 @@
 #include <set>
 // #include <bits/stdc++.h>
 #include <bitset>
+#include <bit>
 
-#include "permutations.h"
+#include "../include/permutations.h"
 
 
 template<size_t GRAPH_SIZE>
@@ -26,14 +27,8 @@ public:
     std::vector<int> values; // values[i] holds the value at vertex i
 
 
-    inline Graph(std::vector<std::bitset<GRAPH_SIZE>>& graph){
-        std::copy(graph.begin(), graph.end(), adjMatrix.begin());
-
-        // Initialize graph values (1-based for the math, 0-indexed for the vector)
-        this->values = std::vector<int>(GRAPH_SIZE);
-        for(int i = 0; i < GRAPH_SIZE; ++i) {
-            values[i] = i + 1;
-        }
+    inline Graph(std::vector<std::bitset<GRAPH_SIZE>>& graph) : adjMatrix(graph) {
+        this->resetValues();
     }
 
     // Gets the next lexicographic pinnacle set that
@@ -67,25 +62,44 @@ public:
         return true;
     }
 
-    // checks if pinnacleSet is a valid pinnacle set for graph
-    bool isValidLabeling(const std::vector<int>& pinnacleSet){
-        if(pinnacleSet.back() != static_cast<int>(GRAPH_SIZE)) return false;
-        if(!std::is_sorted(pinnacleSet.begin(), pinnacleSet.end())) return false;
+    bool isValidLabeling(const std::vector<int>& pinnacleSet) const {
+        if(pinnacleSet.empty() || pinnacleSet.back() != static_cast<int>(GRAPH_SIZE)){
+            return false;
+        }
 
-        for(int vertexIdx = 0; vertexIdx < static_caste<int>(GRAPH_SIZE); ++vertexIdx){
-            std::bitset<GRAPH_SIZE> neighbors = this->adjMatrix[vertexIdx];
-            int vertexValue = this->values[vertexIdx];
-            bool shouldBePinnacle = std::binary_search(pinnacleSet.begin(), pinnacleSet.end(), vertexValue);
-            bool actsAsPinnacle = neighbors.none();
+        // Map pinnacle values to a bitset for O(1) lookup
+        // Since pinnacleSet contains labels (1-indexed), we map them to 0-indexed bits
+        std::bitset<GRAPH_SIZE> isPinnacleValue;
+        for(int val : pinnacleSet){
+            isPinnacleValue.set(val - 1);
+        }
 
-            for(int edgeIdx = 0; edgeIdx < GRAPH_SIZE; ++edgeIdx){
-                if(graph[vertexIdx].test(edgeIdx)){ // if edge exists
-                    if(vertexValue <= values[edgeIdx]){
-                        actsAsPinnacle = false;
-                        break;
-                    }
+        for(size_t i = 0; i < GRAPH_SIZE; ++i){
+            int currentLabel = values[i];
+
+            // iterate only over existing edges
+            unsigned long long mask = adjMatrix[i].to_ullong();
+
+            // A vertex is a pinnacle if it has neighbors AND
+            // none of those neighbors have a higher label.
+            bool hasNeighbors = (mask > 0);
+            bool hasGreaterNeighbor = false;
+
+            while(mask > 0){
+                // Get the index of the next set bit (neighbor)
+                int j = std::countr_zero(mask); // ignore LSP error, this project uses C++20 so this works
+
+                if(values[j] > currentLabel){
+                    hasGreaterNeighbor = true;
+                    break;
                 }
+
+                // Clear the lowest set bit to move to the next neighbor
+                mask &= (mask - 1);
             }
+
+            bool actsAsPinnacle = hasNeighbors && !hasGreaterNeighbor;
+            bool shouldBePinnacle = isPinnacleValue.test(currentLabel - 1);
 
             if(actsAsPinnacle != shouldBePinnacle){
                 return false;
@@ -102,5 +116,46 @@ public:
     // determines all independent sets of a given size
     std::vector<std::vector<int>> getIndependentSets(int size){
         return {{}};
+    }
+
+    void resetValues(){
+        this->values = std::vector<int>(GRAPH_SIZE);
+        for(int i = 0; i < GRAPH_SIZE; ++i) {
+            this->values[i] = i + 1;
+        }
+    }
+
+    void setValues(const std::vector<int>& vals){
+        std::copy(vals.begin(), vals.end(), this->values.begin());
+    }
+
+    static std::vector<std::bitset<GRAPH_SIZE>> makeCompleteGraph(const std::vector<int>& pinnacleSet){
+        std::vector<std::bitset<GRAPH_SIZE>> res(GRAPH_SIZE);
+
+        // Using a bitset for pinnacle lookup (O(1))
+        std::bitset<GRAPH_SIZE + 1> isPinnacle;
+        for(int p : pinnacleSet){
+            if(p > 0 && p <= (int)GRAPH_SIZE){
+                isPinnacle.set(p);
+            }
+        }
+
+        unsigned long long completeMask = (GRAPH_SIZE == 64) ? ~0ULL : (1ULL << GRAPH_SIZE) - 1;
+
+        for(size_t i = 0; i < GRAPH_SIZE; ++i){
+            int vertexValue = (int)i + 1; // Direct 1-based mapping
+
+            if(isPinnacle.test(vertexValue)){
+                // Pinnacle: connects to indices < i (smaller labels)
+                unsigned long long smallerValuesMask = (1ULL << i) - 1;
+                res[i] = std::bitset<GRAPH_SIZE>(smallerValuesMask);
+            } else{
+                // Non-pinnacle: connects to all except self
+                unsigned long long selfMask = (1ULL << i);
+                res[i] = std::bitset<GRAPH_SIZE>(completeMask ^ selfMask);
+            }
+        }
+
+        return res;
     }
 };

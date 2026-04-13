@@ -64,6 +64,6 @@ public:
     // Gets the next lexicographic pinnacle set that
     // maintains strictly increasing ordering
     bool getNextPinnacleSet(std::vector<int>& p);
-    bool isValidLabeling(const std::vector<int> pinnacleSet);
+    bool isValidLabeling(const std::vector<int>& pinnacleSet);
     std::vector<std::vector<int>> getAdmissablePinnacleSets();
 };
