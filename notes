@@ -9,3 +9,16 @@ todo:
 
 2. we can compute pinnacle sets of size k by looking at every independent set of size k
     - this lets us iterate through labelings faster
+
+3. Given a graph G, and a pinnacle set P, if we remove an edge from G, does the number of labelings
+    increase or decrease while maintaining P as a valid pinnacle set? collect examples of either
+    - are there any examples where the number of labelings does not change?
+    - stats on % that go up, % that go down, % that stay the same for graph of size n
+
+
+
+binary string stuff:
+1. google integer compositions
+2. find a sequence that generates the number of permutations of a bin string length n with nonadjacent k ones
+    - she thinks this is a binomial
+3. google multinomials
