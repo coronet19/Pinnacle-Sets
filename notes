@@ -22,3 +22,9 @@ binary string stuff:
 2. find a sequence that generates the number of permutations of a bin string length n with nonadjacent k ones
     - she thinks this is a binomial
 3. google multinomials
+
+If F(n,k) is the coefficient of xk in Fn(x), namely
+
+    F n ( x ) = ∑ k = 0 n F ( n , k ) x k , {\displaystyle F_{n}(x)=\sum _{k=0}^{n}F(n,k)x^{k},\,}
+
+then F(n,k) is the number of ways an n−1 by 1 rectangle can be tiled with 2 by 1 dominoes and 1 by 1 squares so that exactly k squares are used.[
