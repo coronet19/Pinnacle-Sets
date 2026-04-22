@@ -28,3 +28,17 @@ If F(n,k) is the coefficient of xk in Fn(x), namely
     F n ( x ) = ∑ k = 0 n F ( n , k ) x k , {\displaystyle F_{n}(x)=\sum _{k=0}^{n}F(n,k)x^{k},\,}
 
 then F(n,k) is the number of ways an n−1 by 1 rectangle can be tiled with 2 by 1 dominoes and 1 by 1 squares so that exactly k squares are used.[
+
+
+
+a. clarify some background on exponential generating functions, specifically what i need to know for this proof (verify independently)
+b. ask why multiplying the generating functions give us the coefficients of a function with n inputs
+    - use generating functions to count the number of ways to add 3 positive numbers and get 57 (for example)
+
+what are combinatorial objects counted by the fibonacci numbers?
+what are combinatorial objects that are counted by stirling numbers of the second kind, maybe find a bijection?
+    - other formulas for stirling numbers of 2nd kind
+    - expand the formulas to find any extra info about what theyre counting ie partitioning sets with constraints
+ie fibonacci numbres count those 2x1 dominoes, so what do stirling numbers count?
+if theres a (-1)^k, it has something to do with inclusion/exclusion arguments
+ask ai for a citation on the formulas
