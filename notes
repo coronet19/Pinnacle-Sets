@@ -34,6 +34,8 @@ then F(n,k) is the number of ways an n−1 by 1 rectangle can be tiled with 2 by
 a. clarify some background on exponential generating functions, specifically what i need to know for this proof (verify independently)
 b. ask why multiplying the generating functions give us the coefficients of a function with n inputs
     - use generating functions to count the number of ways to add 3 positive numbers and get 57 (for example)
+c. T(n, k) counts the ways to partition n−k elements into k or k−1 non-empty sets
+    (depending on whether the edge gaps are treated as potential buckets)
 
 what are combinatorial objects counted by the fibonacci numbers?
 what are combinatorial objects that are counted by stirling numbers of the second kind, maybe find a bijection?
@@ -42,3 +44,5 @@ what are combinatorial objects that are counted by stirling numbers of the secon
 ie fibonacci numbres count those 2x1 dominoes, so what do stirling numbers count?
 if theres a (-1)^k, it has something to do with inclusion/exclusion arguments
 ask ai for a citation on the formulas
+
+i am not familiar with generating functions. why do we multiply the generating functions in G(x)=[E(x)]^2 × [I(x)]^(k−1)? and why are we raising them to some powers? what is x in this formula? and what does the formula tell us?
