@@ -80,3 +80,13 @@ bool CompleteGraph::isValidLabeling(const std::vector<int>& pinnacleSet){
     }
     return true;
 }
+
+
+void CompleteGraph::printGraph(){
+    for(int i = 0; i < edgeMap.size(); ++i){
+        for(int j = 0; j < edgeMap[i].size(); ++j){
+            std::cout << edgeMap[i][j];
+        }
+        std::cout << std::endl;
+    }
+}

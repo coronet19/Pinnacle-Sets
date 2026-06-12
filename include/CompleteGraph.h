@@ -7,6 +7,7 @@
 #include <random>
 #include <map>
 #include <set>
+#include <iostream>
 
 #include "permutations.h"
 
@@ -66,4 +67,5 @@ public:
     bool getNextPinnacleSet(std::vector<int>& p);
     bool isValidLabeling(const std::vector<int>& pinnacleSet);
     std::vector<std::vector<int>> getAdmissablePinnacleSets();
+    void printGraph();
 };

@@ -10,6 +10,9 @@
 // #include <bits/stdc++.h>
 #include <bitset>
 #include <bit>
+#include <iostream>
+#include <fstream>
+#include <filesystem>
 
 #include "../include/permutations.h"
 
@@ -242,6 +245,15 @@ public:
         }
     }
 
+    void printGraph(){
+        for(int i = 0; i < adjMatrix.size(); ++i){
+            for(int j = 0; j < GRAPH_SIZE; ++j){
+                std::cout << adjMatrix[i][j];
+            }
+            std::cout << std::endl;
+        }
+    }
+
     void countHeapPermutations(const std::vector<int>& p, int size, int& count) {
         if(size == 1){
             if(this->isValidLabeling(p)){
@@ -290,5 +302,55 @@ public:
         }
 
         return res;
+    }
+
+
+    static void getGraphStats(const std::string& path){
+        std::filesystem::path originalPath(path);
+
+        // Get the path without the extension (e.g., "data/graph5c")
+        std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
+
+        // Append "_stats" and put the original extension back (e.g., "data/graph5c_stats.g6")
+        newPath += "_stats";
+        newPath += originalPath.extension();
+
+        std::ifstream file(path);
+        if(!file.is_open()){
+            std::cerr << "Error: Could not open input file at " << path << std::endl;
+            exit(1);
+        }
+
+        std::ofstream res(newPath.string());
+        if(!res.is_open()){
+            std::cerr << "Error: Could not create output file at " << newPath.string() << std::endl;
+            exit(1);
+        }
+
+        std::string line;
+        while(std::getline(file, line)){
+            if(line.empty()) continue;
+
+            Graph g(decodeGraphG6(line));
+            std::vector<int> stats = Graph::analyzeStats(g);
+
+            res << line << ",[" << stats[0] << "," << stats[1] << "," << stats[2] << "]\n";
+        }
+
+        res.close();
+        file.close();
+    }
+
+
+    // decodes a graph6 formatted string into an adjacency matrix
+    static std::vector<std::bitset<GRAPH_SIZE>> decodeGraphG6(const std::string& graph){
+        std::vector<std::bitset<GRAPH_SIZE>> res;
+
+
+    }
+
+    // removes each edge and counts { #decreased labelings, #same, #increased }
+    static std::vector<int> analyzeStats(Graph g){
+
     }
 };
