@@ -15,9 +15,10 @@ todo:
     - are there any examples where the number of labelings does not change?
     - stats on % that go up, % that go down, % that stay the same for graph of size n
 da plan:
+    - make sure graphs are unique, if not already unique in g6 then dont bother
     - graph files are stored in graphs/simple_connected_graphs
     - create a function that loops through a graph file, then checks every valid pin set and appends to the graph:
-        - [x, y, z]
+        - [pin set, x, y, z]
         - x = %of removed edges that decrease valid labelings
         - y = %of removed edges that keep valid labelings the same
         - z = %of removed edges that increase valid labelings
