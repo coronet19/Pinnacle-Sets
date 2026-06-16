@@ -351,6 +351,8 @@ public:
 
     // removes each edge and counts { #decreased labelings, #same, #increased }
     static std::vector<int> analyzeStats(Graph g){
+        std::vector<int> res(3, 0);
+
 
     }
 };

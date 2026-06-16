@@ -1,6 +1,5 @@
 # Prerequisites
 *.d
-graphs/
 
 # Compiled Object files
 *.slo
