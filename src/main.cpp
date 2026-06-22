@@ -108,41 +108,69 @@ int main(int argc, char** argv){
         std::cout << "RUNNING IN RELEASE MODE" << std::endl;
     #endif
 
-    if(argc < 2){
-        std::cerr << "Usage: " << argv[0] << " <graph_size>" << std::endl;
-        return 1;
-    }
 
-    int graphSize = std::stoi(argv[1]);
-    if(graphSize < 1){
-        std::cerr << "Error: Graph size must be between 1 and 20" << std::endl;
-        return 1;
-    }
+    // if(argc < 2){
+    //     std::cerr << "Usage: " << argv[0] << " <graph_size>" << std::endl;
+    //     return 1;
+    // }
 
-    std::vector<int> pinnacleSet({ 3, 4, graphSize });
+    // int graphSize = std::stoi(argv[1]);
+    // if(graphSize < 1){
+    //     std::cerr << "Error: Graph size must be between 1 and 20" << std::endl;
+    //     return 1;
+    // }
 
-    switch(graphSize){
-        case 1:  runGraphPipeline<1>(pinnacleSet);  break;
-        case 2:  runGraphPipeline<2>(pinnacleSet);  break;
-        case 3:  runGraphPipeline<3>(pinnacleSet);  break;
-        case 4:  runGraphPipeline<4>(pinnacleSet);  break;
-        case 5:  runGraphPipeline<5>(pinnacleSet);  break;
-        case 6:  runGraphPipeline<6>(pinnacleSet);  break;
-        case 7:  runGraphPipeline<7>(pinnacleSet);  break;
-        case 8:  runGraphPipeline<8>(pinnacleSet);  break;
-        case 9:  runGraphPipeline<9>(pinnacleSet);  break;
-        case 10: runGraphPipeline<10>(pinnacleSet); break;
-        case 11: runGraphPipeline<11>(pinnacleSet); break;
-        case 12: runGraphPipeline<12>(pinnacleSet); break;
-        case 13: runGraphPipeline<13>(pinnacleSet); break;
-        case 14: runGraphPipeline<14>(pinnacleSet); break;
-        case 15: runGraphPipeline<15>(pinnacleSet); break;
-        case 16: runGraphPipeline<16>(pinnacleSet); break;
-        case 17: runGraphPipeline<17>(pinnacleSet); break;
-        case 18: runGraphPipeline<18>(pinnacleSet); break;
-        case 19: runGraphPipeline<19>(pinnacleSet); break;
-        case 20: runGraphPipeline<20>(pinnacleSet); break;
-    }
+    // std::vector<int> pinnacleSet({ 3, 4, graphSize });
+
+    // switch(graphSize){
+    //     case 1:  runGraphPipeline<1>(pinnacleSet);  break;
+    //     case 2:  runGraphPipeline<2>(pinnacleSet);  break;
+    //     case 3:  runGraphPipeline<3>(pinnacleSet);  break;
+    //     case 4:  runGraphPipeline<4>(pinnacleSet);  break;
+    //     case 5:  runGraphPipeline<5>(pinnacleSet);  break;
+    //     case 6:  runGraphPipeline<6>(pinnacleSet);  break;
+    //     case 7:  runGraphPipeline<7>(pinnacleSet);  break;
+    //     case 8:  runGraphPipeline<8>(pinnacleSet);  break;
+    //     case 9:  runGraphPipeline<9>(pinnacleSet);  break;
+    //     case 10: runGraphPipeline<10>(pinnacleSet); break;
+    //     case 11: runGraphPipeline<11>(pinnacleSet); break;
+    //     case 12: runGraphPipeline<12>(pinnacleSet); break;
+    //     case 13: runGraphPipeline<13>(pinnacleSet); break;
+    //     case 14: runGraphPipeline<14>(pinnacleSet); break;
+    //     case 15: runGraphPipeline<15>(pinnacleSet); break;
+    //     case 16: runGraphPipeline<16>(pinnacleSet); break;
+    //     case 17: runGraphPipeline<17>(pinnacleSet); break;
+    //     case 18: runGraphPipeline<18>(pinnacleSet); break;
+    //     case 19: runGraphPipeline<19>(pinnacleSet); break;
+    //     case 20: runGraphPipeline<20>(pinnacleSet); break;
+    // }
+
+    // printf("Graphs with 1 vertex\n");
+    // Graph<1>::getGraphStats("../graphs/simple_connected_graphs/graph1c.g6");
+
+    // printf("Graphs with 2 vertices\n");
+    // Graph<2>::getGraphStats("../graphs/simple_connected_graphs/graph2c.g6");
+
+    // printf("Graphs with 3 vertices\n");
+    // Graph<3>::getGraphStats("../graphs/simple_connected_graphs/graph3c.g6");
+
+    // printf("Graphs with 4 vertices\n");
+    // Graph<4>::getGraphStats("../graphs/simple_connected_graphs/graph4c.g6");
+
+    // printf("Graphs with 5 vertices\n");
+    // Graph<5>::getGraphStats("../graphs/simple_connected_graphs/graph5c.g6");
+
+    // printf("Graphs with 6 vertices\n");
+    // Graph<6>::getGraphStats("../graphs/simple_connected_graphs/graph6c.g6");
+
+    // printf("Graphs with 7 vertices\n");
+    // Graph<7>::getGraphStats("../graphs/simple_connected_graphs/graph7c.g6");
+
+    // printf("Graphs with 8 vertices\n");
+    // Graph<8>::getGraphStats("../graphs/simple_connected_graphs/graph8c.g6");
+
+    // printf("Graphs with 9 vertices\n");
+    // Graph<9>::getGraphStats("../graphs/simple_connected_graphs/graph9c.g6");
 
     return 0;
 }

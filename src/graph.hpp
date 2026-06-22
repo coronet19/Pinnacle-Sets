@@ -331,10 +331,12 @@ public:
         while(std::getline(file, line)){
             if(line.empty()) continue;
 
-            Graph g(decodeGraphG6(line));
-            std::vector<int> stats = Graph::analyzeStats(g);
+            auto decoded_graph = decodeGraphG6(line);
+            Graph<GRAPH_SIZE> g(decoded_graph);
 
-            res << line << ",[" << stats[0] << "," << stats[1] << "," << stats[2] << "]\n";
+            // res << line << ",[" << stats[0] << "," << stats[1] << "," << stats[2] << "]\n";
+            g.printGraph();
+            std::cout << std::endl;
         }
 
         res.close();
@@ -344,15 +346,73 @@ public:
 
     // decodes a graph6 formatted string into an adjacency matrix
     static std::vector<std::bitset<GRAPH_SIZE>> decodeGraphG6(const std::string& graph){
-        std::vector<std::bitset<GRAPH_SIZE>> res;
+        if (graph.empty()) {
+            return std::vector<std::bitset<GRAPH_SIZE>>(GRAPH_SIZE);
+        }
 
+        size_t idx = 0;
+        size_t n = 0;
 
+        // 1. Decode the number of vertices n
+        if (graph[idx] == 126) {
+            idx++;
+            if (idx < graph.size() && graph[idx] == 126) {
+                // 8-byte format: 126 126 followed by 6 bytes (36 bits)
+                idx++;
+                for (int i = 0; i < 6 && idx < graph.size(); ++i) {
+                    n = (n << 6) | (graph[idx++] - 63);
+                }
+            } else {
+                // 4-byte format: 126 followed by 3 bytes (18 bits)
+                for (int i = 0; i < 3 && idx < graph.size(); ++i) {
+                    n = (n << 6) | (graph[idx++] - 63);
+                }
+            }
+        } else {
+            // 1-byte format
+            n = graph[idx++] - 63;
+        }
+
+        // Initialize adjacency matrix with the compile-time GRAPH_SIZE
+        std::vector<std::bitset<GRAPH_SIZE>> res(GRAPH_SIZE);
+
+        // Safety check to ensure we don't exceed the allocated bitset bounds
+        size_t effective_n = std::min(n, GRAPH_SIZE);
+
+        // 2. Decode the bit vector R(x)
+        size_t bit_buffer = 0;
+        int bits_available = 0;
+
+        for (size_t col = 0; col < effective_n; ++col) {
+            for (size_t row = 0; row < col; ++row) {
+                // If we run out of bits in our current 6-bit chunk, fetch the next byte
+                if (bits_available == 0) {
+                    if (idx >= graph.size()) {
+                        // Out of data prematurely
+                        return res;
+                    }
+                    bit_buffer = graph[idx++] - 63;
+                    bits_available = 6;
+                }
+
+                // Extract the most significant bit from the 6-bit block
+                bool edge = (bit_buffer >> (bits_available - 1)) & 1;
+                bits_available--;
+
+                if (edge) {
+                    res[row].set(col);
+                    res[col].set(row); // Undirected graph symmetry
+                }
+            }
+        }
+
+        return res;
     }
 
     // removes each edge and counts { #decreased labelings, #same, #increased }
     static std::vector<int> analyzeStats(Graph g){
         std::vector<int> res(3, 0);
 
-
+        return res;
     }
 };
