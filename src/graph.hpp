@@ -13,6 +13,7 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <queue>
 
 #include "../include/permutations.h"
 
@@ -304,7 +305,6 @@ public:
         return res;
     }
 
-
     static void getGraphStats(const std::string& path){
         std::filesystem::path originalPath(path);
 
@@ -327,22 +327,28 @@ public:
             exit(1);
         }
 
+        int numGraphsAnalyzed = 0;
         std::string line;
         while(std::getline(file, line)){
             if(line.empty()) continue;
 
             auto decoded_graph = decodeGraphG6(line);
             Graph<GRAPH_SIZE> g(decoded_graph);
+            std::vector<int> stats = Graph::analyzeStats(g);
 
-            // res << line << ",[" << stats[0] << "," << stats[1] << "," << stats[2] << "]\n";
-            g.printGraph();
-            std::cout << std::endl;
+            res << line << ",[" << stats[0] << "," << stats[1] << "," << stats[2] << "]\n";
+            // g.printGraph();
+            // std::cout << std::endl;
+
+            ++numGraphsAnalyzed;
+            if(numGraphsAnalyzed % 100 == 0){
+                printf("Graphs of size %d analyzed: %d\n", GRAPH_SIZE, numGraphsAnalyzed);
+            }
         }
 
         res.close();
         file.close();
     }
-
 
     // decodes a graph6 formatted string into an adjacency matrix
     static std::vector<std::bitset<GRAPH_SIZE>> decodeGraphG6(const std::string& graph){
@@ -409,9 +415,120 @@ public:
         return res;
     }
 
+    bool isConnected() const {
+        // A graph with 0 or 1 vertices is vacuously connected
+        if (GRAPH_SIZE <= 1) {
+            return true;
+        }
+
+        // Keep track of visited vertices using a bitset
+        std::bitset<GRAPH_SIZE> visited;
+        std::queue<size_t> q;
+
+        // Start BFS from vertex 0
+        q.push(0);
+        visited.set(0);
+        size_t visited_count = 1;
+
+        while (!q.empty()) {
+            size_t curr = q.front();
+            q.pop();
+
+            // adjMatrix[curr] gives us a bitset of all neighbors.
+            // We only care about neighbors that haven't been visited yet.
+            std::bitset<GRAPH_SIZE> unvisited_neighbors = adjMatrix[curr] & ~visited;
+
+            // If there are any unvisited neighbors, find them
+            if (unvisited_neighbors.any()) {
+                for (size_t next = 0; next < GRAPH_SIZE; ++next) {
+                    if (unvisited_neighbors.test(next)) {
+                        visited.set(next);
+                        q.push(next);
+                        visited_count++;
+
+                        // Optimization: If we've visited all vertices, it's connected
+                        if (visited_count == GRAPH_SIZE) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // If BFS finished and we didn't visit every vertex, it's disconnected
+        return visited_count == GRAPH_SIZE;
+    }
+
     // removes each edge and counts { #decreased labelings, #same, #increased }
     static std::vector<int> analyzeStats(Graph g){
         std::vector<int> res(3, 0);
+        std::vector<std::bitset<GRAPH_SIZE>> adj = g.adjMatrix;
+
+        for(size_t i = 0; i < GRAPH_SIZE; ++i){
+            for(size_t j = i + 1; j < GRAPH_SIZE; ++j){
+                if(adj[i][j] == 1){
+                    adj[i][j] = 0;
+                    adj[j][i] = 0;
+
+                    Graph modifiedGraph(adj);
+
+                    if(modifiedGraph.isConnected()){
+                        std::vector<std::vector<int>> basePinSets;
+                        std::vector<std::vector<int>> admissablePinSets;
+                        int validLabelingsBeforeBitFlip = 0;
+                        int validLabelingsAfterBitFlip = 0;
+
+                        // generate all valid pinnacle sets for g
+                        // start by making all base case pin sets of size 1 <= n < GRAPH_SIZE
+                        // ex { 2, 3, ..., k, GRAPH_SIZE }
+                        for(size_t k = 1; k < GRAPH_SIZE; ++k){
+                            std::vector<int> currPinSet(k);
+
+                            for(size_t l = 0; l < k; ++l){
+                                currPinSet[l] = l + 2;
+                            }
+
+                            currPinSet[k - 1] = GRAPH_SIZE;
+                            basePinSets.push_back(currPinSet);
+                        }
+
+                        // get all admissable pin sets
+                        for(const auto& p : basePinSets){
+                            std::vector<std::vector<int>> pinSets = g.getAdmissablePinnacleSets(p);
+                            admissablePinSets.reserve(admissablePinSets.size() + pinSets.size());
+                            admissablePinSets.insert(admissablePinSets.end(), std::make_move_iterator(pinSets.begin()), std::make_move_iterator(pinSets.end()));
+                        }
+
+                        // printf("Graph Size: %d\nadmissablePinSets.size(): %d\n", GRAPH_SIZE, admissablePinSets.size());
+
+                        for(const auto& p : admissablePinSets){
+                            int originalGraphCount = 0;
+                            int newGraphCount = 0;
+
+                            g.resetValues();
+                            g.countHeapPermutations(p, GRAPH_SIZE, originalGraphCount);
+
+                            modifiedGraph.resetValues();
+                            modifiedGraph.countHeapPermutations(p, GRAPH_SIZE, newGraphCount);
+
+                            validLabelingsBeforeBitFlip += originalGraphCount;
+                            validLabelingsAfterBitFlip += newGraphCount;
+
+                            if(originalGraphCount > newGraphCount){
+                                ++res[0];
+                            } else if(originalGraphCount < newGraphCount){
+                                ++res[2];
+                            } else{ // originalGraphCount == newGraphCount
+                                ++res[1];
+                            }
+                        }
+                    }
+
+                    adj[i][j] = 1;
+                    adj[j][i] = 1;
+                }
+            }
+        }
 
         return res;
     }

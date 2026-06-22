@@ -27,11 +27,11 @@ void runGraphPipeline(const std::vector<int>& pinnacleSet) {
     CompleteGraph cg(graphSize, pinnacleSet);
 
 
-    printf("Graph: \n");
-    graph.printGraph();
+    // printf("Graph: \n");
+    // graph.printGraph();
 
-    printf("Complete graph: \n");
-    cg.printGraph();
+    // printf("Complete graph: \n");
+    // cg.printGraph();
 
 
     auto startComplete = std::chrono::high_resolution_clock::now();
@@ -166,11 +166,11 @@ int main(int argc, char** argv){
     // printf("Graphs with 7 vertices\n");
     // Graph<7>::getGraphStats("../graphs/simple_connected_graphs/graph7c.g6");
 
-    // printf("Graphs with 8 vertices\n");
-    // Graph<8>::getGraphStats("../graphs/simple_connected_graphs/graph8c.g6");
+    printf("Graphs with 8 vertices\n");
+    Graph<8>::getGraphStats("../graphs/simple_connected_graphs/graph8c.g6");
 
-    // printf("Graphs with 9 vertices\n");
-    // Graph<9>::getGraphStats("../graphs/simple_connected_graphs/graph9c.g6");
+    printf("Graphs with 9 vertices\n");
+    Graph<9>::getGraphStats("../graphs/simple_connected_graphs/graph9c.g6");
 
     return 0;
 }
