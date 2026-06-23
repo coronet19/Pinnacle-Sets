@@ -167,10 +167,15 @@ int main(int argc, char** argv){
     // Graph<7>::getGraphStats("../graphs/simple_connected_graphs/graph7c.g6");
 
     printf("Graphs with 8 vertices\n");
-    Graph<8>::getGraphStats("../graphs/simple_connected_graphs/graph8c.g6");
+    auto startFast = std::chrono::high_resolution_clock::now();
+    Graph<8>::getGraphStatsFast("../graphs/simple_connected_graphs/graph8c.g6");
+    auto endFast = std::chrono::high_resolution_clock::now();
+    auto fastDiff = duration(startFast, endFast) / 1000;
 
-    printf("Graphs with 9 vertices\n");
-    Graph<9>::getGraphStats("../graphs/simple_connected_graphs/graph9c.g6");
+    printf("Fast Version: %fs\n", fastDiff);
+
+    // printf("Graphs with 9 vertices\n");
+    // Graph<9>::getGraphStats("../graphs/simple_connected_graphs/graph9c.g6");
 
     return 0;
 }

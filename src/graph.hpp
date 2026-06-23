@@ -14,6 +14,9 @@
 #include <fstream>
 #include <filesystem>
 #include <queue>
+#include <thread>
+#include <atomic>
+#include <mutex>
 
 #include "../include/permutations.h"
 
@@ -348,6 +351,90 @@ public:
 
         res.close();
         file.close();
+    }
+
+    // multithreaded version
+    static void getGraphStatsFast(const std::string& path) {
+        std::filesystem::path originalPath(path);
+        std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
+        newPath += "_stats";
+        newPath += originalPath.extension();
+
+        // 1. Read all lines into memory sequentially
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open input file at " << path << std::endl;
+            exit(1);
+        }
+
+        std::vector<std::string> lines;
+        std::string line;
+        while (std::getline(file, line)) {
+            if (!line.empty()) {
+                lines.push_back(line);
+            }
+        }
+        file.close();
+
+        size_t numTasks = lines.size();
+        if (numTasks == 0) return;
+
+        // Allocate space for results to preserve exact file order
+        std::vector<std::vector<int>> results(numTasks);
+
+        // 2. Set up multithreading controls
+        std::atomic<size_t> nextTaskIndex{0};
+        std::atomic<int> numGraphsAnalyzed{0};
+        std::mutex coutMtx; // Prevents garbled console printing
+
+        // Worker lambda function
+        auto worker = [&]() {
+            while (true) {
+                // Safely grab the next line's index
+                size_t taskIdx = nextTaskIndex.fetch_add(1);
+                if (taskIdx >= numTasks) break; // No more lines to process
+
+                const std::string& currentLine = lines[taskIdx];
+
+                // Perform the heavy computation
+                auto decoded_graph = decodeGraphG6(currentLine);
+                Graph<GRAPH_SIZE> g(decoded_graph);
+                results[taskIdx] = Graph::analyzeStats(g);
+
+                // Safe progress tracking
+                int processed = ++numGraphsAnalyzed;
+                if (processed % 100 == 0) {
+                    std::lock_guard<std::mutex> lock(coutMtx);
+                    printf("Graphs of size %d analyzed: %d\n", GRAPH_SIZE, processed);
+                }
+            }
+        };
+
+        // 3. Spawn workers based on system capabilities
+        unsigned int numThreads = std::thread::hardware_concurrency();
+        if (numThreads == 0) numThreads = 4; // Fallback
+
+        std::vector<std::thread> threads;
+        for (unsigned int i = 0; i < numThreads; ++i) {
+            threads.emplace_back(worker);
+        }
+
+        // Wait for all threads to finish
+        for (auto& t : threads) {
+            t.join();
+        }
+
+        // 4. Write results back to the file sequentially
+        std::ofstream res(newPath.string());
+        if (!res.is_open()) {
+            std::cerr << "Error: Could not create output file at " << newPath.string() << std::endl;
+            exit(1);
+        }
+
+        for (size_t i = 0; i < numTasks; ++i) {
+            res << lines[i] << ",[" << results[i][0] << "," << results[i][1] << "," << results[i][2] << "]\n";
+        }
+        res.close();
     }
 
     // decodes a graph6 formatted string into an adjacency matrix
