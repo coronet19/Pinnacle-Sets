@@ -149,40 +149,40 @@ int main(int argc, char** argv){
     Graph<1>::getGraphStatsFast("../graphs/simple_connected_graphs/graph1c.g6");
     std::cout << std::endl;
 
-    printf("Starting Graphs With 2 Vertex\n");
+    printf("Starting Graphs With 2 Vertices\n");
     Graph<2>::getGraphStatsFast("../graphs/simple_connected_graphs/graph2c.g6");
     std::cout << std::endl;
 
-    printf("Starting Graphs With 3 Vertex\n");
+    printf("Starting Graphs With 3 Vertices\n");
     Graph<3>::getGraphStatsFast("../graphs/simple_connected_graphs/graph3c.g6");
     std::cout << std::endl;
 
-    printf("Starting Graphs With 4 Vertex\n");
+    printf("Starting Graphs With 4 Vertices\n");
     Graph<4>::getGraphStatsFast("../graphs/simple_connected_graphs/graph4c.g6");
     std::cout << std::endl;
 
-    printf("Starting Graphs With 5 Vertex\n");
+    printf("Starting Graphs With 5 Vertices\n");
     Graph<5>::getGraphStatsFast("../graphs/simple_connected_graphs/graph5c.g6");
     std::cout << std::endl;
 
-    printf("Starting Graphs With 6 Vertex\n");
+    printf("Starting Graphs With 6 Vertices\n");
     Graph<6>::getGraphStatsFast("../graphs/simple_connected_graphs/graph6c.g6");
     std::cout << std::endl;
 
-    printf("Starting Graphs With 7 Vertex\n");
+    printf("Starting Graphs With 7 Vertices\n");
     Graph<7>::getGraphStatsFast("../graphs/simple_connected_graphs/graph7c.g6");
     std::cout << std::endl;
 
-    // printf("Graphs with 9 vertices\n");
-    // auto startFast = std::chrono::high_resolution_clock::now();
-    // Graph<9>::getGraphStatsFast("../graphs/simple_connected_graphs/graph9c.g6");
-    // auto endFast = std::chrono::high_resolution_clock::now();
-    // auto fastDiff = duration(startFast, endFast) / 1000;
+    printf("Graphs with 8 vertices\n");
+    Graph<8>::getGraphStatsFast("../graphs/simple_connected_graphs/graph8c.g6");
 
-    // printf("Fast Version: %fs\n", fastDiff);
+    printf("Starting Graphs With 9 Vertices\n");
+    auto startFast = std::chrono::high_resolution_clock::now();
+    Graph<9>::getGraphStatsFast("../graphs/simple_connected_graphs/graph9c.g6");
+    auto endFast = std::chrono::high_resolution_clock::now();
+    auto fastDiff = duration(startFast, endFast) / 1000;
 
-    // printf("Graphs with 9 vertices\n");
-    // Graph<9>::getGraphStatsFast("../graphs/simple_connected_graphs/graph9c.g6");
+    printf("Fast Version: %fs\n", fastDiff);
 
     return 0;
 }

@@ -357,13 +357,116 @@ public:
     }
 
     // multithreaded version
+    // static void getGraphStatsFast(const std::string& path) {
+    //     std::filesystem::path originalPath(path);
+    //     std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
+    //     newPath += "_stats";
+    //     newPath += originalPath.extension();
+
+    //     // 1. Read all lines into memory sequentially
+    //     std::ifstream file(path);
+    //     if (!file.is_open()) {
+    //         std::cerr << "Error: Could not open input file at " << path << std::endl;
+    //         exit(1);
+    //     }
+
+    //     std::vector<std::string> lines;
+    //     std::string line;
+    //     while (std::getline(file, line)) {
+    //         if (!line.empty()) {
+    //             lines.push_back(line);
+    //         }
+    //     }
+    //     file.close();
+
+    //     size_t numTasks = lines.size();
+    //     if (numTasks == 0) return;
+
+    //     // Allocate space for results to preserve exact file order
+    //     std::vector<std::vector<int>> results(numTasks);
+
+    //     // 2. Set up multithreading controls
+    //     std::atomic<size_t> nextTaskIndex{0};
+    //     std::atomic<int> numGraphsAnalyzed{0};
+    //     std::mutex coutMtx; // Prevents garbled console printing
+
+    //     const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets();
+
+    //     // Worker lambda function
+    //     auto worker = [&]() {
+    //         while (true) {
+    //             // Safely grab the next line's index
+    //             size_t taskIdx = nextTaskIndex.fetch_add(1);
+    //             if (taskIdx >= numTasks) break; // No more lines to process
+
+    //             const std::string& currentLine = lines[taskIdx];
+
+    //             // Perform the heavy computation
+    //             auto decoded_graph = decodeGraphG6(currentLine);
+    //             Graph<GRAPH_SIZE> g(decoded_graph);
+    //             results[taskIdx] = Graph::analyzeStats(g, pinnacleSets);
+
+    //             // Safe progress tracking
+    //             int processed = ++numGraphsAnalyzed;
+    //             if (processed % 100 == 0) {
+    //                 std::lock_guard<std::mutex> lock(coutMtx);
+    //                 printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, processed);
+    //             }
+    //         }
+    //     };
+
+    //     // 3. Spawn workers based on system capabilities
+    //     unsigned int numThreads = std::thread::hardware_concurrency();
+    //     if (numThreads == 0) numThreads = 4; // Fallback
+
+    //     std::vector<std::thread> threads;
+    //     for (unsigned int i = 0; i < numThreads; ++i) {
+    //         threads.emplace_back(worker);
+    //     }
+
+    //     // Wait for all threads to finish
+    //     for (auto& t : threads) {
+    //         t.join();
+    //     }
+
+    //     // 4. Write results back to the file sequentially
+    //     std::ofstream res(newPath.string());
+    //     if (!res.is_open()) {
+    //         std::cerr << "Error: Could not create output file at " << newPath.string() << std::endl;
+    //         exit(1);
+    //     }
+
+    //     for (size_t i = 0; i < numTasks; ++i) {
+    //         res << lines[i] << ",[" << results[i][0] << "," << results[i][1] << "," << results[i][2] << "]\n";
+    //     }
+
+    //     if((int)numGraphsAnalyzed % 100 != 0){
+    //         printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, (int)numGraphsAnalyzed);
+    //     }
+
+    //     res.close();
+    // }
+    // #include <queue>
+
+    // Custom structure to hold the task index and its calculated stats
+    struct TaskResult {
+        size_t index;
+        std::string line;
+        std::vector<int> stats;
+
+        // Comparator for the priority queue (min-heap based on index)
+        bool operator>(const TaskResult& other) const {
+            return index > other.index;
+        }
+    };
+
     static void getGraphStatsFast(const std::string& path) {
         std::filesystem::path originalPath(path);
         std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
-        newPath += "_stats";
-        newPath += originalPath.extension();
+        newPath += "_stats.csv";
+        // newPath += originalPath.extension();
 
-        // 1. Read all lines into memory sequentially
+        // 1. Read all lines into memory
         std::ifstream file(path);
         if (!file.is_open()) {
             std::cerr << "Error: Could not open input file at " << path << std::endl;
@@ -373,74 +476,107 @@ public:
         std::vector<std::string> lines;
         std::string line;
         while (std::getline(file, line)) {
-            if (!line.empty()) {
-                lines.push_back(line);
-            }
+            if (!line.empty()) lines.push_back(line);
         }
         file.close();
 
         size_t numTasks = lines.size();
         if (numTasks == 0) return;
 
-        // Allocate space for results to preserve exact file order
-        std::vector<std::vector<int>> results(numTasks);
+        // Check if output file exists and count processed lines
+        size_t existingCount = 0;
+        if (std::filesystem::exists(newPath)) {
+            std::ifstream checkFile(newPath);
+            std::string dummy;
+            while (std::getline(checkFile, dummy)) {
+                if (!dummy.empty()) existingCount++;
+            }
+            checkFile.close();
 
-        // 2. Set up multithreading controls
-        std::atomic<size_t> nextTaskIndex{0};
-        std::atomic<int> numGraphsAnalyzed{0};
-        std::mutex coutMtx; // Prevents garbled console printing
+            if (existingCount >= numTasks) {
+                std::cout << "All graphs have already been processed." << std::endl;
+                return;
+            }
+            std::cout << "Resuming from graph index: " << existingCount << std::endl;
+        }
+
+        // Open output file in append mode immediately
+        std::ofstream res(newPath.string(), std::ios::app);
+        if (!res.is_open()) {
+            std::cerr << "Error: Could not open output file at " << newPath.string() << std::endl;
+            exit(1);
+        }
+
+        // 2. Multithreading & Synchronization controls
+        std::atomic<size_t> nextTaskIndex{existingCount};
+        std::atomic<int> numGraphsAnalyzed{(int)existingCount};
+
+        // We expect the very next write to be the first unprocessed index
+        size_t nextWriteIndex = existingCount;
+
+        std::mutex writeMtx; // Protects the priority queue, file streaming, and nextWriteIndex tracking
+        std::priority_queue<TaskResult, std::vector<TaskResult>, std::greater<TaskResult>> pq;
 
         const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets();
 
-        // Worker lambda function
+        // Worker lambda
         auto worker = [&]() {
             while (true) {
-                // Safely grab the next line's index
                 size_t taskIdx = nextTaskIndex.fetch_add(1);
-                if (taskIdx >= numTasks) break; // No more lines to process
+                if (taskIdx >= numTasks) break;
 
                 const std::string& currentLine = lines[taskIdx];
 
-                // Perform the heavy computation
+                // Heavy computation (Done entirely in parallel, no locks!)
                 auto decoded_graph = decodeGraphG6(currentLine);
                 Graph<GRAPH_SIZE> g(decoded_graph);
-                results[taskIdx] = Graph::analyzeStats(g, pinnacleSets);
+                auto stats = Graph::analyzeStats(g, pinnacleSets);
 
-                // Safe progress tracking
                 int processed = ++numGraphsAnalyzed;
-                if (processed % 100 == 0) {
-                    std::lock_guard<std::mutex> lock(coutMtx);
-                    printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, processed);
+
+                // Critical Section: Push to queue and flush sequentially matching elements to disk
+                {
+                    std::lock_guard<std::mutex> lock(writeMtx);
+
+                    // Put completed work into the min-heap priority queue
+                    pq.push({taskIdx, currentLine, stats});
+
+                    // Drain the queue as long as the lowest index matches our expected sequence index
+                    while (!pq.empty() && pq.top().index == nextWriteIndex) {
+                        TaskResult readyTask = pq.top();
+                        pq.pop();
+
+                        // Write to file instantly in precise order
+                        res << readyTask.line << "," << readyTask.stats[0] << ","
+                            << readyTask.stats[1] << "," << readyTask.stats[2] << "\n";
+
+                        nextWriteIndex++;
+                    }
+
+                    // Force OS to write to disk so it's safe if killed right now
+                    res.flush();
+
+                    if (processed % 100 == 0) {
+                        printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, processed);
+                    }
                 }
             }
         };
 
-        // 3. Spawn workers based on system capabilities
+        // 3. Spawn workers
         unsigned int numThreads = std::thread::hardware_concurrency();
-        if (numThreads == 0) numThreads = 4; // Fallback
+        if (numThreads == 0) numThreads = 4;
 
         std::vector<std::thread> threads;
         for (unsigned int i = 0; i < numThreads; ++i) {
             threads.emplace_back(worker);
         }
 
-        // Wait for all threads to finish
         for (auto& t : threads) {
             t.join();
         }
 
-        // 4. Write results back to the file sequentially
-        std::ofstream res(newPath.string());
-        if (!res.is_open()) {
-            std::cerr << "Error: Could not create output file at " << newPath.string() << std::endl;
-            exit(1);
-        }
-
-        for (size_t i = 0; i < numTasks; ++i) {
-            res << lines[i] << ",[" << results[i][0] << "," << results[i][1] << "," << results[i][2] << "]\n";
-        }
-
-        if((int)numGraphsAnalyzed % 100 != 0){
+        if ((int)numGraphsAnalyzed % 100 != 0) {
             printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, (int)numGraphsAnalyzed);
         }
 
