@@ -3,9 +3,9 @@
 #include <vector>
 #include <cassert>
 #include <algorithm>
-#include <ranges>
-#include <random>
-#include <map>
+// #include <ranges>
+// #include <random>
+// #include <map>
 #include <set>
 // #include <bits/stdc++.h>
 #include <bitset>
@@ -18,7 +18,7 @@
 #include <atomic>
 #include <mutex>
 
-#include "../include/permutations.h"
+// #include "../include/permutations.h"
 
 
 template<size_t GRAPH_SIZE>
@@ -116,6 +116,8 @@ public:
         return true;
     }
 
+    // takes in a base pinnacle set b of size n and returns
+    // all pinnacle sets p of size n where p > b
     std::vector<std::vector<int>> getAdmissablePinnacleSets(std::vector<int> pinnacles) {
         std::vector<std::vector<int>> admissable;
         std::sort(pinnacles.begin(), pinnacles.end());
@@ -218,7 +220,7 @@ public:
 
     void resetValues(){
         this->values = std::vector<int>(GRAPH_SIZE);
-        for(int i = 0; i < GRAPH_SIZE; ++i) {
+        for(size_t i = 0; i < GRAPH_SIZE; ++i) {
             this->values[i] = i + 1;
         }
     }
@@ -330,6 +332,7 @@ public:
             exit(1);
         }
 
+        const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets();
         int numGraphsAnalyzed = 0;
         std::string line;
         while(std::getline(file, line)){
@@ -337,7 +340,7 @@ public:
 
             auto decoded_graph = decodeGraphG6(line);
             Graph<GRAPH_SIZE> g(decoded_graph);
-            std::vector<int> stats = Graph::analyzeStats(g);
+            std::vector<int> stats = Graph::analyzeStats(g, pinnacleSets);
 
             res << line << ",[" << stats[0] << "," << stats[1] << "," << stats[2] << "]\n";
             // g.printGraph();
@@ -387,6 +390,8 @@ public:
         std::atomic<int> numGraphsAnalyzed{0};
         std::mutex coutMtx; // Prevents garbled console printing
 
+        const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets();
+
         // Worker lambda function
         auto worker = [&]() {
             while (true) {
@@ -399,13 +404,13 @@ public:
                 // Perform the heavy computation
                 auto decoded_graph = decodeGraphG6(currentLine);
                 Graph<GRAPH_SIZE> g(decoded_graph);
-                results[taskIdx] = Graph::analyzeStats(g);
+                results[taskIdx] = Graph::analyzeStats(g, pinnacleSets);
 
                 // Safe progress tracking
                 int processed = ++numGraphsAnalyzed;
                 if (processed % 100 == 0) {
                     std::lock_guard<std::mutex> lock(coutMtx);
-                    printf("Graphs of size %d analyzed: %d\n", GRAPH_SIZE, processed);
+                    printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, processed);
                 }
             }
         };
@@ -434,6 +439,11 @@ public:
         for (size_t i = 0; i < numTasks; ++i) {
             res << lines[i] << ",[" << results[i][0] << "," << results[i][1] << "," << results[i][2] << "]\n";
         }
+
+        if((int)numGraphsAnalyzed % 100 != 0){
+            printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, (int)numGraphsAnalyzed);
+        }
+
         res.close();
     }
 
@@ -547,7 +557,7 @@ public:
     }
 
     // removes each edge and counts { #decreased labelings, #same, #increased }
-    static std::vector<int> analyzeStats(Graph g){
+    static std::vector<int> analyzeStats(Graph &g, const std::vector<std::vector<int>> &basePinnacleSets){
         std::vector<int> res(3, 0);
         std::vector<std::bitset<GRAPH_SIZE>> adj = g.adjMatrix;
 
@@ -560,50 +570,35 @@ public:
                     Graph modifiedGraph(adj);
 
                     if(modifiedGraph.isConnected()){
-                        std::vector<std::vector<int>> basePinSets;
                         std::vector<std::vector<int>> admissablePinSets;
-                        int validLabelingsBeforeBitFlip = 0;
-                        int validLabelingsAfterBitFlip = 0;
 
-                        // generate all valid pinnacle sets for g
-                        // start by making all base case pin sets of size 1 <= n < GRAPH_SIZE
-                        // ex { 2, 3, ..., k, GRAPH_SIZE }
-                        for(size_t k = 1; k < GRAPH_SIZE; ++k){
-                            std::vector<int> currPinSet(k);
-
-                            for(size_t l = 0; l < k; ++l){
-                                currPinSet[l] = l + 2;
-                            }
-
-                            currPinSet[k - 1] = GRAPH_SIZE;
-                            basePinSets.push_back(currPinSet);
-                        }
-
-                        // get all admissable pin sets
-                        for(const auto& p : basePinSets){
+                        // // get all admissable pin sets
+                        for(const auto& p : basePinnacleSets){
                             std::vector<std::vector<int>> pinSets = g.getAdmissablePinnacleSets(p);
                             admissablePinSets.reserve(admissablePinSets.size() + pinSets.size());
                             admissablePinSets.insert(admissablePinSets.end(), std::make_move_iterator(pinSets.begin()), std::make_move_iterator(pinSets.end()));
                         }
 
-                        // printf("Graph Size: %d\nadmissablePinSets.size(): %d\n", GRAPH_SIZE, admissablePinSets.size());
+                        // printf("Graph Size: %d\n", GRAPH_SIZE);
+                        // printf("pinnacleSets.size(): %d\n", basePinnacleSets.size());
+                        // printf("admissablePinSets.size(): %d\n\n", admissablePinSets.size());
 
                         for(const auto& p : admissablePinSets){
-                            int originalGraphCount = 0;
-                            int newGraphCount = 0;
+                            int validLabelingsBeforeBitFlip = 0;
+                            int validLabelingsAfterBitFlip = 0;
 
                             g.resetValues();
-                            g.countHeapPermutations(p, GRAPH_SIZE, originalGraphCount);
+                            g.countHeapPermutations(p, GRAPH_SIZE, validLabelingsBeforeBitFlip);
 
                             modifiedGraph.resetValues();
-                            modifiedGraph.countHeapPermutations(p, GRAPH_SIZE, newGraphCount);
+                            modifiedGraph.countHeapPermutations(p, GRAPH_SIZE, validLabelingsAfterBitFlip);
 
-                            validLabelingsBeforeBitFlip += originalGraphCount;
-                            validLabelingsAfterBitFlip += newGraphCount;
+                            validLabelingsBeforeBitFlip += validLabelingsBeforeBitFlip;
+                            validLabelingsAfterBitFlip += validLabelingsAfterBitFlip;
 
-                            if(originalGraphCount > newGraphCount){
+                            if(validLabelingsBeforeBitFlip > validLabelingsAfterBitFlip){
                                 ++res[0];
-                            } else if(originalGraphCount < newGraphCount){
+                            } else if(validLabelingsBeforeBitFlip < validLabelingsAfterBitFlip){
                                 ++res[2];
                             } else{ // originalGraphCount == newGraphCount
                                 ++res[1];
@@ -618,5 +613,25 @@ public:
         }
 
         return res;
+    }
+
+    static std::vector<std::vector<int>> generatePinnacleSets(){
+        std::vector<std::vector<int>> basePinSets;
+
+        // generate all valid pinnacle sets for g
+        // start by making all base case pin sets of size 1 <= n < GRAPH_SIZE
+        // ex { 2, 3, ..., k, GRAPH_SIZE }
+        for(size_t k = 1; k < GRAPH_SIZE; ++k){
+            std::vector<int> currPinSet(k);
+
+            for(size_t l = 0; l < k - 1; ++l){
+                currPinSet[l] = l + 2;
+            }
+
+            currPinSet[k - 1] = GRAPH_SIZE;
+            basePinSets.push_back(currPinSet);
+        }
+
+        return basePinSets;
     }
 };
