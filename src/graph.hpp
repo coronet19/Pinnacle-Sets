@@ -21,7 +21,7 @@
 // #include "../include/permutations.h"
 
 
-template<size_t GRAPH_SIZE>
+template<size_t GRAPH_SIZE = 0>
 class Graph{
 private:
 
@@ -260,6 +260,67 @@ public:
         }
     }
 
+    static void printGraph(const std::string& graph){
+        if(graph.empty()) return;
+
+        size_t idx = 0;
+        size_t graphSize = 0;
+
+        // 1. Decode the number of vertices n
+        if (graph[idx] == 126) {
+            idx++;
+            if (idx < graph.size() && graph[idx] == 126) {
+                idx++;
+                for (int i = 0; i < 6 && idx < graph.size(); ++i) {
+                    graphSize = (graphSize << 6) | (graph[idx++] - 63);
+                }
+            } else {
+                for (int i = 0; i < 3 && idx < graph.size(); ++i) {
+                    graphSize = (graphSize << 6) | (graph[idx++] - 63);
+                }
+            }
+        } else {
+            graphSize = graph[idx++] - 63;
+        }
+
+        // Initialize adjacency matrix bits
+        std::vector<unsigned long> res(graphSize, 0);
+
+        // 2. Decode the bit vector R(x)
+        size_t bit_buffer = 0;
+        int bits_available = 0;
+
+        for (size_t col = 0; col < graphSize; ++col) {
+            for (size_t row = 0; row < col; ++row) {
+                if (bits_available == 0) {
+                    if (idx >= graph.size()) {
+                        // Out of data prematurely, break out and print what we have
+                        break;
+                    }
+                    bit_buffer = graph[idx++] - 63;
+                    bits_available = 6;
+                }
+
+                bool edge = (bit_buffer >> (bits_available - 1)) & 1;
+                bits_available--;
+
+                if (edge) {
+                    res[row] |= (1UL << (graphSize - col - 1));
+                    res[col] |= (1UL << (graphSize - row - 1));
+                }
+            }
+        }
+
+        // 3. Print the Adjacency Matrix
+        for(size_t i = 0; i < graphSize; ++i){
+            for(size_t j = 0; j < graphSize; ++j){
+                bool isSet = res[i] & (1UL << (graphSize - j - 1));
+                std::cout << isSet;
+            }
+            std::cout << std::endl;
+        }
+    }
+
     void countHeapPermutations(const std::vector<int>& p, int size, int& count) {
         if(size == 1){
             if(this->isValidLabeling(p)){
@@ -355,98 +416,6 @@ public:
         res.close();
         file.close();
     }
-
-    // multithreaded version
-    // static void getGraphStatsFast(const std::string& path) {
-    //     std::filesystem::path originalPath(path);
-    //     std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
-    //     newPath += "_stats";
-    //     newPath += originalPath.extension();
-
-    //     // 1. Read all lines into memory sequentially
-    //     std::ifstream file(path);
-    //     if (!file.is_open()) {
-    //         std::cerr << "Error: Could not open input file at " << path << std::endl;
-    //         exit(1);
-    //     }
-
-    //     std::vector<std::string> lines;
-    //     std::string line;
-    //     while (std::getline(file, line)) {
-    //         if (!line.empty()) {
-    //             lines.push_back(line);
-    //         }
-    //     }
-    //     file.close();
-
-    //     size_t numTasks = lines.size();
-    //     if (numTasks == 0) return;
-
-    //     // Allocate space for results to preserve exact file order
-    //     std::vector<std::vector<int>> results(numTasks);
-
-    //     // 2. Set up multithreading controls
-    //     std::atomic<size_t> nextTaskIndex{0};
-    //     std::atomic<int> numGraphsAnalyzed{0};
-    //     std::mutex coutMtx; // Prevents garbled console printing
-
-    //     const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets();
-
-    //     // Worker lambda function
-    //     auto worker = [&]() {
-    //         while (true) {
-    //             // Safely grab the next line's index
-    //             size_t taskIdx = nextTaskIndex.fetch_add(1);
-    //             if (taskIdx >= numTasks) break; // No more lines to process
-
-    //             const std::string& currentLine = lines[taskIdx];
-
-    //             // Perform the heavy computation
-    //             auto decoded_graph = decodeGraphG6(currentLine);
-    //             Graph<GRAPH_SIZE> g(decoded_graph);
-    //             results[taskIdx] = Graph::analyzeStats(g, pinnacleSets);
-
-    //             // Safe progress tracking
-    //             int processed = ++numGraphsAnalyzed;
-    //             if (processed % 100 == 0) {
-    //                 std::lock_guard<std::mutex> lock(coutMtx);
-    //                 printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, processed);
-    //             }
-    //         }
-    //     };
-
-    //     // 3. Spawn workers based on system capabilities
-    //     unsigned int numThreads = std::thread::hardware_concurrency();
-    //     if (numThreads == 0) numThreads = 4; // Fallback
-
-    //     std::vector<std::thread> threads;
-    //     for (unsigned int i = 0; i < numThreads; ++i) {
-    //         threads.emplace_back(worker);
-    //     }
-
-    //     // Wait for all threads to finish
-    //     for (auto& t : threads) {
-    //         t.join();
-    //     }
-
-    //     // 4. Write results back to the file sequentially
-    //     std::ofstream res(newPath.string());
-    //     if (!res.is_open()) {
-    //         std::cerr << "Error: Could not create output file at " << newPath.string() << std::endl;
-    //         exit(1);
-    //     }
-
-    //     for (size_t i = 0; i < numTasks; ++i) {
-    //         res << lines[i] << ",[" << results[i][0] << "," << results[i][1] << "," << results[i][2] << "]\n";
-    //     }
-
-    //     if((int)numGraphsAnalyzed % 100 != 0){
-    //         printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, (int)numGraphsAnalyzed);
-    //     }
-
-    //     res.close();
-    // }
-    // #include <queue>
 
     // Custom structure to hold the task index and its calculated stats
     struct TaskResult {

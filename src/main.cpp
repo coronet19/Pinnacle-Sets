@@ -1,9 +1,9 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <sstream>
-#include <algorithm>
-#include <iomanip>
+// #include <sstream>
+// #include <algorithm>
+// #include <iomanip>
 #include <chrono>
 
 #include "../include/CompleteGraph.h"
@@ -103,10 +103,32 @@ void runGraphPipeline(const std::vector<int>& pinnacleSet) {
 
 int main(int argc, char** argv){
     #ifdef _DEBUG
-        std::cout << "RUNNING IN DEBUG MODE" << std::endl;
+        // std::cout << "RUNNING IN DEBUG MODE" << std::endl;
     #else
-        std::cout << "RUNNING IN RELEASE MODE" << std::endl;
+        // std::cout << "RUNNING IN RELEASE MODE" << std::endl;
     #endif
+
+    std::vector<std::string> args(argv, argv + argc);
+
+    size_t idx = 0;
+    while(idx < args.size()){
+        std::string arg = args[idx];
+
+        if(arg == "-h" || arg == "--help"){
+            printf("%s [OPTIONS...]\n", args[0].c_str());
+            printf("\n");
+            printf("Options:\n");
+            printf("  -h --help                 Show this help\n");
+            printf("  -p --print [PATTERN...]   Print adjacency matrix of the given g6 encoded graph\n");
+            break;
+        } else if(arg == "-p" || arg == "--print"){
+            std::string encodedGraph = args[idx + 1];
+            Graph<>::printGraph(encodedGraph);
+            break;
+        }
+
+        ++idx;
+    }
 
 
     // if(argc < 2){
@@ -145,44 +167,44 @@ int main(int argc, char** argv){
     //     case 20: runGraphPipeline<20>(pinnacleSet); break;
     // }
 
-    printf("Starting Graphs With 1 Vertex\n");
-    Graph<1>::getGraphStatsFast("../graphs/simple_connected_graphs/graph1c.g6");
-    std::cout << std::endl;
+    // printf("Starting Graphs With 1 Vertex\n");
+    // Graph<1>::getGraphStatsFast("../graphs/simple_connected_graphs/graph1c.g6");
+    // std::cout << std::endl;
 
-    printf("Starting Graphs With 2 Vertices\n");
-    Graph<2>::getGraphStatsFast("../graphs/simple_connected_graphs/graph2c.g6");
-    std::cout << std::endl;
+    // printf("Starting Graphs With 2 Vertices\n");
+    // Graph<2>::getGraphStatsFast("../graphs/simple_connected_graphs/graph2c.g6");
+    // std::cout << std::endl;
 
-    printf("Starting Graphs With 3 Vertices\n");
-    Graph<3>::getGraphStatsFast("../graphs/simple_connected_graphs/graph3c.g6");
-    std::cout << std::endl;
+    // printf("Starting Graphs With 3 Vertices\n");
+    // Graph<3>::getGraphStatsFast("../graphs/simple_connected_graphs/graph3c.g6");
+    // std::cout << std::endl;
 
-    printf("Starting Graphs With 4 Vertices\n");
-    Graph<4>::getGraphStatsFast("../graphs/simple_connected_graphs/graph4c.g6");
-    std::cout << std::endl;
+    // printf("Starting Graphs With 4 Vertices\n");
+    // Graph<4>::getGraphStatsFast("../graphs/simple_connected_graphs/graph4c.g6");
+    // std::cout << std::endl;
 
-    printf("Starting Graphs With 5 Vertices\n");
-    Graph<5>::getGraphStatsFast("../graphs/simple_connected_graphs/graph5c.g6");
-    std::cout << std::endl;
+    // printf("Starting Graphs With 5 Vertices\n");
+    // Graph<5>::getGraphStatsFast("../graphs/simple_connected_graphs/graph5c.g6");
+    // std::cout << std::endl;
 
-    printf("Starting Graphs With 6 Vertices\n");
-    Graph<6>::getGraphStatsFast("../graphs/simple_connected_graphs/graph6c.g6");
-    std::cout << std::endl;
+    // printf("Starting Graphs With 6 Vertices\n");
+    // Graph<6>::getGraphStatsFast("../graphs/simple_connected_graphs/graph6c.g6");
+    // std::cout << std::endl;
 
-    printf("Starting Graphs With 7 Vertices\n");
-    Graph<7>::getGraphStatsFast("../graphs/simple_connected_graphs/graph7c.g6");
-    std::cout << std::endl;
+    // printf("Starting Graphs With 7 Vertices\n");
+    // Graph<7>::getGraphStatsFast("../graphs/simple_connected_graphs/graph7c.g6");
+    // std::cout << std::endl;
 
-    printf("Graphs with 8 vertices\n");
-    Graph<8>::getGraphStatsFast("../graphs/simple_connected_graphs/graph8c.g6");
+    // printf("Graphs with 8 vertices\n");
+    // Graph<8>::getGraphStatsFast("../graphs/simple_connected_graphs/graph8c.g6");
 
-    printf("Starting Graphs With 9 Vertices\n");
-    auto startFast = std::chrono::high_resolution_clock::now();
-    Graph<9>::getGraphStatsFast("../graphs/simple_connected_graphs/graph9c.g6");
-    auto endFast = std::chrono::high_resolution_clock::now();
-    auto fastDiff = duration(startFast, endFast) / 1000;
+    // printf("Starting Graphs With 9 Vertices\n");
+    // auto startFast = std::chrono::high_resolution_clock::now();
+    // Graph<9>::getGraphStatsFast("../graphs/simple_connected_graphs/graph9c.g6");
+    // auto endFast = std::chrono::high_resolution_clock::now();
+    // auto fastDiff = duration(startFast, endFast) / 1000;
 
-    printf("Fast Version: %fs\n", fastDiff);
+    // printf("Fast Version: %fs\n", fastDiff);
 
     return 0;
 }
