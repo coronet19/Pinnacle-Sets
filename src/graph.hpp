@@ -3,12 +3,7 @@
 #include <vector>
 #include <cassert>
 #include <algorithm>
-// #include <ranges>
-// #include <random>
-// #include <map>
 #include <set>
-// #include <bits/stdc++.h>
-#include <bitset>
 #include <bit>
 #include <iostream>
 #include <fstream>
@@ -18,140 +13,128 @@
 #include <atomic>
 #include <mutex>
 
-// #include "../include/permutations.h"
 
-
-template<size_t GRAPH_SIZE = 0>
-class Graph{
-private:
-
+class Graph {
 public:
-    // Maps vertices to their edges, where an edge between
-    // two vertices exists if graph[v_1] << v_2 == 1.
-    // i.e. adjMatrix[vertex] -> 00100101, where 0 <= vertex < GRAPH_SIZE,
-    // and the 0's in 00100101 mean no edge, and the 1's mean an edge
-    const std::vector<std::bitset<GRAPH_SIZE>> adjMatrix;
+    const size_t graphSize;
+
+    // Maps vertices to their edges, where an edge between two vertices exists if (adjMatrix[v] >> j) & 1 == 1.
+    // i.e. adjMatrix[vertex] -> 0b00100101, where 0 <= vertex < graphSize,
+    // and the 0-bits mean no edge, and the 1-bits mean an edge.
+    const std::vector<uint64_t> adjMatrix;
+
     std::vector<int> values; // values[i] holds the value at vertex i
 
-
-    inline Graph(std::vector<std::bitset<GRAPH_SIZE>>& graph) : adjMatrix(graph) {
+    inline Graph(size_t n, std::vector<uint64_t> graph)
+        : graphSize(n), adjMatrix(std::move(graph)) {
         this->resetValues();
     }
 
-    // Gets the next lexicographic pinnacle set that
-    // maintains strictly increasing ordering.
-    static bool getNextPinnacleSet(std::vector<int>& p){
-        if(p.size() < 2){
-            return false;
-        }
+    // Bitmask covering exactly the valid vertex range [0, graphSize)
+    uint64_t fullMask() const {
+        return (graphSize == 64) ? ~0ULL : (1ULL << graphSize) - 1;
+    }
+
+    // Gets the next lexicographic pinnacle set that maintains strictly increasing ordering.
+    static bool getNextPinnacleSet(std::vector<int>& p, size_t graphSize) {
+        if (p.size() < 2) return false;
 
         int k = static_cast<int>(p.size());
         int targetIdx = -1;
 
-        for(int i = k - 2; i >= 0; --i){
-            int ceiling = static_cast<int>(GRAPH_SIZE) - (k - 1 - i);
-            if(p[i] < ceiling){
+        for (int i = k - 2; i >= 0; --i) {
+            int ceiling = static_cast<int>(graphSize) - (k - 1 - i);
+            if (p[i] < ceiling) {
                 targetIdx = i;
                 break;
             }
         }
 
-        if(targetIdx == -1){
-            return false;
-        }
+        if (targetIdx == -1) return false;
 
         p[targetIdx]++;
-
-        for(int j = targetIdx + 1; j < k - 1; ++j){
+        for (int j = targetIdx + 1; j < k - 1; ++j)
             p[j] = p[j - 1] + 1;
-        }
 
         return true;
     }
 
     bool isValidLabeling(const std::vector<int>& pinnacleSet) const {
-        if(pinnacleSet.empty() || pinnacleSet.back() != static_cast<int>(GRAPH_SIZE)){
+        if (pinnacleSet.empty() || pinnacleSet.back() != static_cast<int>(graphSize))
             return false;
-        }
 
-        // Map pinnacle values to a bitset for O(1) lookup
-        // Since pinnacleSet contains labels (1-indexed), we map them to 0-indexed bits
-        std::bitset<GRAPH_SIZE> isPinnacleValue;
-        for(int val : pinnacleSet){
-            isPinnacleValue.set(val - 1);
-        }
+        // Map pinnacle values for O(1) lookup; pinnacleSet contains 1-indexed labels
+        uint64_t isPinnacleValue = 0;
+        for (int val : pinnacleSet)
+            isPinnacleValue |= (1ULL << (val - 1));
 
-        for(size_t i = 0; i < GRAPH_SIZE; ++i){
+        for (size_t i = 0; i < graphSize; ++i) {
             int currentLabel = values[i];
 
-            // iterate only over existing edges
-            unsigned long long mask = adjMatrix[i].to_ullong();
+            // Iterate only over existing edges
+            uint64_t mask = adjMatrix[i];
 
             // A vertex is a pinnacle if it has neighbors AND
             // none of those neighbors have a higher label.
-            bool hasNeighbors = (mask > 0);
+            bool hasNeighbors = (mask != 0);
             bool hasGreaterNeighbor = false;
 
-            while(mask > 0){
+            while (mask != 0) {
                 // Get the index of the next set bit (neighbor)
-                int j = std::countr_zero(mask); // ignore LSP error, this project uses C++20 so this works
+                int j = std::countr_zero(mask);
 
-                if(values[j] > currentLabel){
+                if (values[j] > currentLabel) {
                     hasGreaterNeighbor = true;
                     break;
                 }
 
                 // Clear the lowest set bit to move to the next neighbor
-                mask &= (mask - 1);
+                mask &= mask - 1;
             }
 
             bool actsAsPinnacle = hasNeighbors && !hasGreaterNeighbor;
-            bool shouldBePinnacle = isPinnacleValue.test(currentLabel - 1);
+            bool shouldBePinnacle = (isPinnacleValue >> (currentLabel - 1)) & 1;
 
-            if(actsAsPinnacle != shouldBePinnacle){
-                return false;
-            }
+            if (actsAsPinnacle != shouldBePinnacle) return false;
         }
 
         return true;
     }
 
-    // takes in a base pinnacle set b of size n and returns
-    // all pinnacle sets p of size n where p > b
+    // Takes in a base pinnacle set b of size n and returns
+    // all pinnacle sets p of size n where p >= b
     std::vector<std::vector<int>> getAdmissablePinnacleSets(std::vector<int> pinnacles) {
         std::vector<std::vector<int>> admissable;
         std::sort(pinnacles.begin(), pinnacles.end());
 
-        // Set up all labels [1...GRAPH_SIZE]
-        std::vector<int> allLabels(GRAPH_SIZE);
-        for(int i = 0; i < (int)GRAPH_SIZE; ++i) allLabels[i] = i + 1;
+        // Set up all labels [1...graphSize]
+        std::vector<int> allLabels(graphSize);
+        for (int i = 0; i < (int)graphSize; ++i) allLabels[i] = i + 1;
 
         do {
-            if (pinnacles.empty() || pinnacles.back() != static_cast<int>(GRAPH_SIZE)) continue;
+            if (pinnacles.empty() || pinnacles.back() != static_cast<int>(graphSize)) continue;
 
             auto indySets = this->getIndependentSets(pinnacles.size());
             bool possible = false;
 
             for (const auto& indices : indySets) {
-                // Create a list of labels that ARE NOT pinnacles
+                // Create a list of labels that are NOT pinnacles
                 std::vector<int> nonPinnacleLabels;
                 std::set<int> pSet(pinnacles.begin(), pinnacles.end());
-                for(int l : allLabels) if(!pSet.count(l)) nonPinnacleLabels.push_back(l);
+                for (int l : allLabels) if (!pSet.count(l)) nonPinnacleLabels.push_back(l);
 
-                // OPTIMIZATION: Instead of full permutation, try a "Safe" assignment:
-                // Put pinnacles on indices, others everywhere else.
+                // Try a "safe" assignment: put pinnacle labels on the independent set vertices,
+                // and non-pinnacle labels everywhere else
                 this->resetValues();
-                std::vector<bool> isUsed(GRAPH_SIZE, false);
-                for(int idx : indices) isUsed[idx] = true;
+                std::vector<bool> isUsed(graphSize, false);
+                for (int idx : indices) isUsed[idx] = true;
 
-                // Simple assignment
                 int pIdx = 0, npIdx = 0;
-                for(int i = 0; i < (int)GRAPH_SIZE; ++i) {
-                    if(isUsed[i]) values[i] = pinnacles[pIdx++];
+                for (int i = 0; i < (int)graphSize; ++i) {
+                    if (isUsed[i]) values[i] = pinnacles[pIdx++];
                     else values[i] = nonPinnacleLabels[npIdx++];
                 }
 
-                // Now check if this SPECIFIC labeling works
                 if (this->isValidLabeling(pinnacles)) {
                     possible = true;
                     break;
@@ -160,55 +143,46 @@ public:
 
             if (possible) admissable.push_back(pinnacles);
 
-        } while (Graph<GRAPH_SIZE>::getNextPinnacleSet(pinnacles));
+        } while (Graph::getNextPinnacleSet(pinnacles, graphSize));
 
         return admissable;
     }
 
-    // determines all independent sets of a given size n
+    // Determines all independent sets of a given size n
     std::vector<std::vector<int>> getIndependentSets(int n) {
         std::vector<std::vector<int>> results;
 
-        // P: Candidate vertices (initially all)
-        // R: Current independent set being built
-        std::bitset<GRAPH_SIZE> initialP;
-        initialP.set();
-        std::bitset<GRAPH_SIZE> initialR;
+        // P: candidate vertices (initially all), R: current independent set being built
+        uint64_t initialP = fullMask();
+        uint64_t initialR = 0;
 
-        // Recursive backtracking function
-        auto findSets = [&](auto self, std::bitset<GRAPH_SIZE> P, std::bitset<GRAPH_SIZE> R) -> void {
-            // Base Case: We reached the target size
-            if (R.count() == (size_t)n) {
+        // Recursive backtracking
+        auto findSets = [&](auto self, uint64_t P, uint64_t R) -> void {
+            // Base case: reached target size
+            if ((int)std::popcount(R) == n) {
                 std::vector<int> setIndices;
-                for (int i = 0; i < (int)GRAPH_SIZE; ++i) {
-                    if (R.test(i)) setIndices.push_back(i);
-                }
+                for (int i = 0; i < (int)graphSize; ++i)
+                    if ((R >> i) & 1) setIndices.push_back(i);
                 results.push_back(setIndices);
                 return;
             }
 
-            // Pruning: If remaining candidates + current set < target size, stop
-            if (R.count() + P.count() < (size_t)n) {
-                return;
-            }
+            // Pruning: if remaining candidates + current set < target size, stop
+            if ((int)std::popcount(R) + (int)std::popcount(P) < n) return;
 
             // Process candidates
-            while (P.any()) {
-                // Get the next candidate index using bit-jumping (countr_zero)
-                unsigned long long mask = P.to_ullong();
-                int v = std::countr_zero(mask); // ignore LSP error
+            while (P != 0) {
+                // Get the next candidate index
+                int v = std::countr_zero(P);
 
                 // 1. Remove v from the candidate pool P
-                P.reset(v);
+                P &= P - 1;
 
-                // 2. Create a new candidate pool for the next branch
-                // Crucial: The next candidates must NOT be adjacent to v
-                // We do this by ANDing P with the bitwise NOT of v's adjacency row
-                std::bitset<GRAPH_SIZE> nextP = P & ~(adjMatrix[v]);
+                // 2. Create a new candidate pool: next candidates must NOT be adjacent to v
+                uint64_t nextP = P & ~adjMatrix[v];
 
-                // 3. Add v to our current result set R and recurse
-                std::bitset<GRAPH_SIZE> nextR = R;
-                nextR.set(v);
+                // 3. Add v to the current result set R and recurse
+                uint64_t nextR = R | (1ULL << v);
 
                 self(self, nextP, nextR);
             }
@@ -218,50 +192,53 @@ public:
         return results;
     }
 
-    void resetValues(){
-        this->values = std::vector<int>(GRAPH_SIZE);
-        for(size_t i = 0; i < GRAPH_SIZE; ++i) {
+    void resetValues() {
+        this->values.resize(graphSize);
+        for (size_t i = 0; i < graphSize; ++i)
             this->values[i] = i + 1;
-        }
     }
 
-    void setValues(const std::vector<int>& vals){
+    void setValues(const std::vector<int>& vals) {
         std::copy(vals.begin(), vals.end(), this->values.begin());
     }
 
     void countHeapPermutations(const std::vector<std::vector<int>>& pinnacles, int size, int& count) {
-        if(size == 1){
-            for(const auto& p : pinnacles){
-                if(this->isValidLabeling(p)){
-                    ++count;
-                }
-            }
-
+        if (size == 1) {
+            for (const auto& p : pinnacles)
+                if (this->isValidLabeling(p)) ++count;
             return;
         }
 
-        for(int i = 0; i < size; i++){
+        for (int i = 0; i < size; i++) {
             countHeapPermutations(pinnacles, size - 1, count);
-
-            if(size & 1){
-                std::swap(this->values[0], this->values[size - 1]);
-            } else{
-                std::swap(this->values[i], this->values[size - 1]);
-            }
+            if (size & 1) std::swap(this->values[0], this->values[size - 1]);
+            else std::swap(this->values[i], this->values[size - 1]);
         }
     }
 
-    void printGraph(){
-        for(int i = 0; i < adjMatrix.size(); ++i){
-            for(int j = 0; j < GRAPH_SIZE; ++j){
-                std::cout << adjMatrix[i][j];
-            }
+    void countHeapPermutations(const std::vector<int>& p, int size, int& count) {
+        if (size == 1) {
+            if (this->isValidLabeling(p)) ++count;
+            return;
+        }
+
+        for (int i = 0; i < size; i++) {
+            countHeapPermutations(p, size - 1, count);
+            if (size % 2 == 1) std::swap(this->values[0], this->values[size - 1]);
+            else std::swap(this->values[i], this->values[size - 1]);
+        }
+    }
+
+    void printGraph() const {
+        for (size_t i = 0; i < adjMatrix.size(); ++i) {
+            for (size_t j = 0; j < graphSize; ++j)
+                std::cout << ((adjMatrix[i] >> j) & 1);
             std::cout << std::endl;
         }
     }
 
-    static void printGraph(const std::string& graph){
-        if(graph.empty()) return;
+    static void printGraph(const std::string& graph) {
+        if (graph.empty()) return;
 
         size_t idx = 0;
         size_t graphSize = 0;
@@ -271,19 +248,16 @@ public:
             idx++;
             if (idx < graph.size() && graph[idx] == 126) {
                 idx++;
-                for (int i = 0; i < 6 && idx < graph.size(); ++i) {
+                for (int i = 0; i < 6 && idx < graph.size(); ++i)
                     graphSize = (graphSize << 6) | (graph[idx++] - 63);
-                }
             } else {
-                for (int i = 0; i < 3 && idx < graph.size(); ++i) {
+                for (int i = 0; i < 3 && idx < graph.size(); ++i)
                     graphSize = (graphSize << 6) | (graph[idx++] - 63);
-                }
             }
         } else {
             graphSize = graph[idx++] - 63;
         }
 
-        // Initialize adjacency matrix bits
         std::vector<unsigned long> res(graphSize, 0);
 
         // 2. Decode the bit vector R(x)
@@ -293,17 +267,12 @@ public:
         for (size_t col = 0; col < graphSize; ++col) {
             for (size_t row = 0; row < col; ++row) {
                 if (bits_available == 0) {
-                    if (idx >= graph.size()) {
-                        // Out of data prematurely, break out and print what we have
-                        break;
-                    }
+                    if (idx >= graph.size()) break;
                     bit_buffer = graph[idx++] - 63;
                     bits_available = 6;
                 }
-
                 bool edge = (bit_buffer >> (bits_available - 1)) & 1;
                 bits_available--;
-
                 if (edge) {
                     res[row] |= (1UL << (graphSize - col - 1));
                     res[col] |= (1UL << (graphSize - row - 1));
@@ -311,129 +280,243 @@ public:
             }
         }
 
-        // 3. Print the Adjacency Matrix
-        for(size_t i = 0; i < graphSize; ++i){
-            for(size_t j = 0; j < graphSize; ++j){
-                bool isSet = res[i] & (1UL << (graphSize - j - 1));
-                std::cout << isSet;
-            }
+        // 3. Print the adjacency matrix
+        for (size_t i = 0; i < graphSize; ++i) {
+            for (size_t j = 0; j < graphSize; ++j)
+                std::cout << (bool)(res[i] & (1UL << (graphSize - j - 1)));
             std::cout << std::endl;
         }
     }
 
-    void countHeapPermutations(const std::vector<int>& p, int size, int& count) {
-        if(size == 1){
-            if(this->isValidLabeling(p)){
-                ++count;
-            }
+    static std::vector<uint64_t> makeCompleteGraph(size_t graphSize, const std::vector<int>& pinnacleSet) {
+        std::vector<uint64_t> res(graphSize, 0);
 
-            return;
-        }
+        // Pinnacle lookup via bitmask (O(1)); pinnacleSet contains 1-indexed vertex values
+        uint64_t isPinnacle = 0;
+        for (int p : pinnacleSet)
+            if (p > 0 && p <= (int)graphSize)
+                isPinnacle |= (1ULL << p);
 
-        for(int i = 0; i < size; i++){
-            countHeapPermutations(p, size - 1, count);
+        uint64_t completeMask = (graphSize == 64) ? ~0ULL : (1ULL << graphSize) - 1;
 
-            if(size % 2 == 1){
-                std::swap(this->values[0], this->values[size - 1]);
-            } else{
-                std::swap(this->values[i], this->values[size - 1]);
-            }
-        }
-    }
-
-    static std::vector<std::bitset<GRAPH_SIZE>> makeCompleteGraph(const std::vector<int>& pinnacleSet){
-        std::vector<std::bitset<GRAPH_SIZE>> res(GRAPH_SIZE);
-
-        // Using a bitset for pinnacle lookup (O(1))
-        std::bitset<GRAPH_SIZE + 1> isPinnacle;
-        for(int p : pinnacleSet){
-            if(p > 0 && p <= (int)GRAPH_SIZE){
-                isPinnacle.set(p);
-            }
-        }
-
-        unsigned long long completeMask = (GRAPH_SIZE == 64) ? ~0ULL : (1ULL << GRAPH_SIZE) - 1;
-
-        for(size_t i = 0; i < GRAPH_SIZE; ++i){
-            int vertexValue = (int)i + 1; // Direct 1-based mapping
-
-            if(isPinnacle.test(vertexValue)){
-                // Pinnacle: connects to indices < i (smaller labels)
-                unsigned long long smallerValuesMask = (1ULL << i) - 1;
-                res[i] = std::bitset<GRAPH_SIZE>(smallerValuesMask);
-            } else{
+        for (size_t i = 0; i < graphSize; ++i) {
+            int vertexValue = (int)i + 1;
+            if ((isPinnacle >> vertexValue) & 1) {
+                // Pinnacle: connects only to vertices with smaller indices
+                res[i] = (1ULL << i) - 1;
+            } else {
                 // Non-pinnacle: connects to all except self
-                unsigned long long selfMask = (1ULL << i);
-                res[i] = std::bitset<GRAPH_SIZE>(completeMask ^ selfMask);
+                res[i] = completeMask ^ (1ULL << i);
             }
         }
 
         return res;
     }
 
-    static void getGraphStats(const std::string& path){
+    // Decodes a graph6 formatted string into an adjacency matrix
+    static std::vector<uint64_t> decodeGraphG6(size_t graphSize, const std::string& graph) {
+        if (graph.empty()) return std::vector<uint64_t>(graphSize, 0);
+
+        size_t idx = 0;
+        size_t n = 0;
+
+        // 1. Decode the number of vertices n
+        if (graph[idx] == 126) {
+            idx++;
+            if (idx < graph.size() && graph[idx] == 126) {
+                // 8-byte format: 126 126 followed by 6 bytes (36 bits)
+                idx++;
+                for (int i = 0; i < 6 && idx < graph.size(); ++i)
+                    n = (n << 6) | (graph[idx++] - 63);
+            } else {
+                // 4-byte format: 126 followed by 3 bytes (18 bits)
+                for (int i = 0; i < 3 && idx < graph.size(); ++i)
+                    n = (n << 6) | (graph[idx++] - 63);
+            }
+        } else {
+            // 1-byte format
+            n = graph[idx++] - 63;
+        }
+
+        // Safety check: don't exceed the allocated adjacency matrix bounds
+        std::vector<uint64_t> res(graphSize, 0);
+        size_t effective_n = std::min(n, graphSize);
+
+        // 2. Decode the bit vector R(x)
+        size_t bit_buffer = 0;
+        int bits_available = 0;
+
+        for (size_t col = 0; col < effective_n; ++col) {
+            for (size_t row = 0; row < col; ++row) {
+                // If we run out of bits in the current 6-bit chunk, fetch the next byte
+                if (bits_available == 0) {
+                    if (idx >= graph.size()) return res;
+                    bit_buffer = graph[idx++] - 63;
+                    bits_available = 6;
+                }
+
+                // Extract the most significant bit from the 6-bit block
+                bool edge = (bit_buffer >> (bits_available - 1)) & 1;
+                bits_available--;
+
+                if (edge) {
+                    res[row] |= (1ULL << col);
+                    res[col] |= (1ULL << row); // undirected graph symmetry
+                }
+            }
+        }
+
+        return res;
+    }
+
+    bool isConnected() const {
+        // A graph with 0 or 1 vertices is vacuously connected
+        if (graphSize <= 1) return true;
+
+        // BFS from vertex 0
+        uint64_t visited = 1ULL;
+        std::queue<size_t> q;
+        q.push(0);
+        size_t visited_count = 1;
+
+        while (!q.empty()) {
+            size_t curr = q.front();
+            q.pop();
+
+            // Only consider neighbors not yet visited
+            uint64_t unvisited_neighbors = adjMatrix[curr] & ~visited;
+
+            while (unvisited_neighbors != 0) {
+                int next = std::countr_zero(unvisited_neighbors);
+                unvisited_neighbors &= unvisited_neighbors - 1;
+                visited |= (1ULL << next);
+                q.push(next);
+
+                // Early exit once all vertices have been reached
+                if (++visited_count == graphSize) return true;
+            }
+        }
+
+        // If BFS finished without visiting all vertices, the graph is disconnected
+        return visited_count == graphSize;
+    }
+
+    // Removes each edge and counts { #decreased labelings, #same, #increased }
+    static std::vector<int> analyzeStats(Graph& g, const std::vector<std::vector<int>>& basePinnacleSets) {
+        std::vector<int> res(3, 0);
+        std::vector<uint64_t> adj = g.adjMatrix;
+
+        for (size_t i = 0; i < g.graphSize; ++i) {
+            for (size_t j = i + 1; j < g.graphSize; ++j) {
+                if ((adj[i] >> j) & 1) {
+                    adj[i] &= ~(1ULL << j);
+                    adj[j] &= ~(1ULL << i);
+
+                    Graph modifiedGraph(g.graphSize, adj);
+
+                    if (modifiedGraph.isConnected()) {
+                        std::vector<std::vector<int>> admissablePinSets;
+
+                        // Get all admissable pin sets for the original graph
+                        for (const auto& p : basePinnacleSets) {
+                            std::vector<std::vector<int>> pinSets = g.getAdmissablePinnacleSets(p);
+                            admissablePinSets.reserve(admissablePinSets.size() + pinSets.size());
+                            admissablePinSets.insert(admissablePinSets.end(),
+                                std::make_move_iterator(pinSets.begin()),
+                                std::make_move_iterator(pinSets.end()));
+                        }
+
+                        for (const auto& p : admissablePinSets) {
+                            int validLabelingsBeforeBitFlip = 0;
+                            int validLabelingsAfterBitFlip = 0;
+
+                            g.resetValues();
+                            g.countHeapPermutations(p, g.graphSize, validLabelingsBeforeBitFlip);
+
+                            modifiedGraph.resetValues();
+                            modifiedGraph.countHeapPermutations(p, g.graphSize, validLabelingsAfterBitFlip);
+
+                            if (validLabelingsBeforeBitFlip > validLabelingsAfterBitFlip) ++res[0];
+                            else if (validLabelingsBeforeBitFlip < validLabelingsAfterBitFlip) ++res[2];
+                            else ++res[1];
+                        }
+                    }
+
+                    adj[i] |= (1ULL << j);
+                    adj[j] |= (1ULL << i);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    // Generates the base pinnacle set of each size for a graph of size graphSize:
+    // { {graphSize}, {2, graphSize}, {2, 3, graphSize}, ... }
+    static std::vector<std::vector<int>> generatePinnacleSets(size_t graphSize) {
+        std::vector<std::vector<int>> basePinSets;
+
+        for (size_t k = 1; k < graphSize; ++k) {
+            std::vector<int> currPinSet(k);
+            for (size_t l = 0; l < k - 1; ++l)
+                currPinSet[l] = l + 2;
+            currPinSet[k - 1] = graphSize;
+            basePinSets.push_back(currPinSet);
+        }
+
+        return basePinSets;
+    }
+
+    struct TaskResult {
+        size_t index;
+        std::string line;
+        std::vector<int> stats;
+        bool operator>(const TaskResult& other) const { return index > other.index; }
+    };
+
+    static void getGraphStats(size_t graphSize, const std::string& path) {
         std::filesystem::path originalPath(path);
-
-        // Get the path without the extension (e.g., "data/graph5c")
         std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
-
-        // Append "_stats" and put the original extension back (e.g., "data/graph5c_stats.g6")
         newPath += "_stats";
         newPath += originalPath.extension();
 
         std::ifstream file(path);
-        if(!file.is_open()){
+        if (!file.is_open()) {
             std::cerr << "Error: Could not open input file at " << path << std::endl;
             exit(1);
         }
 
         std::ofstream res(newPath.string());
-        if(!res.is_open()){
+        if (!res.is_open()) {
             std::cerr << "Error: Could not create output file at " << newPath.string() << std::endl;
             exit(1);
         }
 
-        const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets();
+        const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets(graphSize);
         int numGraphsAnalyzed = 0;
         std::string line;
-        while(std::getline(file, line)){
-            if(line.empty()) continue;
+        while (std::getline(file, line)) {
+            if (line.empty()) continue;
 
-            auto decoded_graph = decodeGraphG6(line);
-            Graph<GRAPH_SIZE> g(decoded_graph);
+            auto decoded_graph = decodeGraphG6(graphSize, line);
+            Graph g(graphSize, decoded_graph);
             std::vector<int> stats = Graph::analyzeStats(g, pinnacleSets);
 
             res << line << ",[" << stats[0] << "," << stats[1] << "," << stats[2] << "]\n";
-            // g.printGraph();
-            // std::cout << std::endl;
 
             ++numGraphsAnalyzed;
-            if(numGraphsAnalyzed % 100 == 0){
-                printf("Graphs of size %d analyzed: %d\n", GRAPH_SIZE, numGraphsAnalyzed);
-            }
+            if (numGraphsAnalyzed % 100 == 0)
+                printf("Graphs of size %zu analyzed: %d\n", graphSize, numGraphsAnalyzed);
         }
 
         res.close();
         file.close();
     }
 
-    // Custom structure to hold the task index and its calculated stats
-    struct TaskResult {
-        size_t index;
-        std::string line;
-        std::vector<int> stats;
-
-        // Comparator for the priority queue (min-heap based on index)
-        bool operator>(const TaskResult& other) const {
-            return index > other.index;
-        }
-    };
-
-    static void getGraphStatsFast(const std::string& path) {
+    static void getGraphStatsFast(size_t graphSize, const std::string& path) {
         std::filesystem::path originalPath(path);
         std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
         newPath += "_stats.csv";
-        // newPath += originalPath.extension();
 
         // 1. Read all lines into memory
         std::ifstream file(path);
@@ -444,22 +527,20 @@ public:
 
         std::vector<std::string> lines;
         std::string line;
-        while (std::getline(file, line)) {
+        while (std::getline(file, line))
             if (!line.empty()) lines.push_back(line);
-        }
         file.close();
 
         size_t numTasks = lines.size();
         if (numTasks == 0) return;
 
-        // Check if output file exists and count processed lines
+        // Check if output file exists and count already-processed lines (resume support)
         size_t existingCount = 0;
         if (std::filesystem::exists(newPath)) {
             std::ifstream checkFile(newPath);
             std::string dummy;
-            while (std::getline(checkFile, dummy)) {
+            while (std::getline(checkFile, dummy))
                 if (!dummy.empty()) existingCount++;
-            }
             checkFile.close();
 
             if (existingCount >= numTasks) {
@@ -476,19 +557,19 @@ public:
             exit(1);
         }
 
-        // 2. Multithreading & Synchronization controls
+        // 2. Multithreading & synchronization controls
         std::atomic<size_t> nextTaskIndex{existingCount};
         std::atomic<int> numGraphsAnalyzed{(int)existingCount};
 
-        // We expect the very next write to be the first unprocessed index
+        // We expect the next write to be the first unprocessed index
         size_t nextWriteIndex = existingCount;
 
-        std::mutex writeMtx; // Protects the priority queue, file streaming, and nextWriteIndex tracking
+        std::mutex writeMtx; // protects the priority queue, file stream, and nextWriteIndex
         std::priority_queue<TaskResult, std::vector<TaskResult>, std::greater<TaskResult>> pq;
 
-        const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets();
+        const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets(graphSize);
 
-        // Worker lambda
+        // Worker lambda — computation is done in parallel, writes are serialized via the priority queue
         auto worker = [&]() {
             while (true) {
                 size_t taskIdx = nextTaskIndex.fetch_add(1);
@@ -496,38 +577,33 @@ public:
 
                 const std::string& currentLine = lines[taskIdx];
 
-                // Heavy computation (Done entirely in parallel, no locks!)
-                auto decoded_graph = decodeGraphG6(currentLine);
-                Graph<GRAPH_SIZE> g(decoded_graph);
+                // Heavy computation (no locks held here)
+                auto decoded_graph = decodeGraphG6(graphSize, currentLine);
+                Graph g(graphSize, decoded_graph);
                 auto stats = Graph::analyzeStats(g, pinnacleSets);
 
                 int processed = ++numGraphsAnalyzed;
 
-                // Critical Section: Push to queue and flush sequentially matching elements to disk
+                // Critical section: push result and flush sequential entries to disk
                 {
                     std::lock_guard<std::mutex> lock(writeMtx);
 
-                    // Put completed work into the min-heap priority queue
                     pq.push({taskIdx, currentLine, stats});
 
-                    // Drain the queue as long as the lowest index matches our expected sequence index
+                    // Drain the queue as long as the lowest index matches the expected sequence
                     while (!pq.empty() && pq.top().index == nextWriteIndex) {
                         TaskResult readyTask = pq.top();
                         pq.pop();
-
-                        // Write to file instantly in precise order
                         res << readyTask.line << "," << readyTask.stats[0] << ","
                             << readyTask.stats[1] << "," << readyTask.stats[2] << "\n";
-
                         nextWriteIndex++;
                     }
 
-                    // Force OS to write to disk so it's safe if killed right now
+                    // Force OS flush so progress is safe if the process is killed
                     res.flush();
 
-                    if (processed % 100 == 0) {
-                        printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, processed);
-                    }
+                    if (processed % 100 == 0)
+                        printf("Graphs of size %zu analyzed: %d\n", graphSize, processed);
                 }
             }
         };
@@ -537,206 +613,15 @@ public:
         if (numThreads == 0) numThreads = 4;
 
         std::vector<std::thread> threads;
-        for (unsigned int i = 0; i < numThreads; ++i) {
+        for (unsigned int i = 0; i < numThreads; ++i)
             threads.emplace_back(worker);
-        }
 
-        for (auto& t : threads) {
+        for (auto& t : threads)
             t.join();
-        }
 
-        if ((int)numGraphsAnalyzed % 100 != 0) {
-            printf("Graphs of size %ld analyzed: %d\n", GRAPH_SIZE, (int)numGraphsAnalyzed);
-        }
+        if ((int)numGraphsAnalyzed % 100 != 0)
+            printf("Graphs of size %zu analyzed: %d\n", graphSize, (int)numGraphsAnalyzed);
 
         res.close();
-    }
-
-    // decodes a graph6 formatted string into an adjacency matrix
-    static std::vector<std::bitset<GRAPH_SIZE>> decodeGraphG6(const std::string& graph){
-        if (graph.empty()) {
-            return std::vector<std::bitset<GRAPH_SIZE>>(GRAPH_SIZE);
-        }
-
-        size_t idx = 0;
-        size_t n = 0;
-
-        // 1. Decode the number of vertices n
-        if (graph[idx] == 126) {
-            idx++;
-            if (idx < graph.size() && graph[idx] == 126) {
-                // 8-byte format: 126 126 followed by 6 bytes (36 bits)
-                idx++;
-                for (int i = 0; i < 6 && idx < graph.size(); ++i) {
-                    n = (n << 6) | (graph[idx++] - 63);
-                }
-            } else {
-                // 4-byte format: 126 followed by 3 bytes (18 bits)
-                for (int i = 0; i < 3 && idx < graph.size(); ++i) {
-                    n = (n << 6) | (graph[idx++] - 63);
-                }
-            }
-        } else {
-            // 1-byte format
-            n = graph[idx++] - 63;
-        }
-
-        // Initialize adjacency matrix with the compile-time GRAPH_SIZE
-        std::vector<std::bitset<GRAPH_SIZE>> res(GRAPH_SIZE);
-
-        // Safety check to ensure we don't exceed the allocated bitset bounds
-        size_t effective_n = std::min(n, GRAPH_SIZE);
-
-        // 2. Decode the bit vector R(x)
-        size_t bit_buffer = 0;
-        int bits_available = 0;
-
-        for (size_t col = 0; col < effective_n; ++col) {
-            for (size_t row = 0; row < col; ++row) {
-                // If we run out of bits in our current 6-bit chunk, fetch the next byte
-                if (bits_available == 0) {
-                    if (idx >= graph.size()) {
-                        // Out of data prematurely
-                        return res;
-                    }
-                    bit_buffer = graph[idx++] - 63;
-                    bits_available = 6;
-                }
-
-                // Extract the most significant bit from the 6-bit block
-                bool edge = (bit_buffer >> (bits_available - 1)) & 1;
-                bits_available--;
-
-                if (edge) {
-                    res[row].set(col);
-                    res[col].set(row); // Undirected graph symmetry
-                }
-            }
-        }
-
-        return res;
-    }
-
-    bool isConnected() const {
-        // A graph with 0 or 1 vertices is vacuously connected
-        if (GRAPH_SIZE <= 1) {
-            return true;
-        }
-
-        // Keep track of visited vertices using a bitset
-        std::bitset<GRAPH_SIZE> visited;
-        std::queue<size_t> q;
-
-        // Start BFS from vertex 0
-        q.push(0);
-        visited.set(0);
-        size_t visited_count = 1;
-
-        while (!q.empty()) {
-            size_t curr = q.front();
-            q.pop();
-
-            // adjMatrix[curr] gives us a bitset of all neighbors.
-            // We only care about neighbors that haven't been visited yet.
-            std::bitset<GRAPH_SIZE> unvisited_neighbors = adjMatrix[curr] & ~visited;
-
-            // If there are any unvisited neighbors, find them
-            if (unvisited_neighbors.any()) {
-                for (size_t next = 0; next < GRAPH_SIZE; ++next) {
-                    if (unvisited_neighbors.test(next)) {
-                        visited.set(next);
-                        q.push(next);
-                        visited_count++;
-
-                        // Optimization: If we've visited all vertices, it's connected
-                        if (visited_count == GRAPH_SIZE) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // If BFS finished and we didn't visit every vertex, it's disconnected
-        return visited_count == GRAPH_SIZE;
-    }
-
-    // removes each edge and counts { #decreased labelings, #same, #increased }
-    static std::vector<int> analyzeStats(Graph &g, const std::vector<std::vector<int>> &basePinnacleSets){
-        std::vector<int> res(3, 0);
-        std::vector<std::bitset<GRAPH_SIZE>> adj = g.adjMatrix;
-
-        for(size_t i = 0; i < GRAPH_SIZE; ++i){
-            for(size_t j = i + 1; j < GRAPH_SIZE; ++j){
-                if(adj[i][j] == 1){
-                    adj[i][j] = 0;
-                    adj[j][i] = 0;
-
-                    Graph modifiedGraph(adj);
-
-                    if(modifiedGraph.isConnected()){
-                        std::vector<std::vector<int>> admissablePinSets;
-
-                        // // get all admissable pin sets
-                        for(const auto& p : basePinnacleSets){
-                            std::vector<std::vector<int>> pinSets = g.getAdmissablePinnacleSets(p);
-                            admissablePinSets.reserve(admissablePinSets.size() + pinSets.size());
-                            admissablePinSets.insert(admissablePinSets.end(), std::make_move_iterator(pinSets.begin()), std::make_move_iterator(pinSets.end()));
-                        }
-
-                        // printf("Graph Size: %d\n", GRAPH_SIZE);
-                        // printf("pinnacleSets.size(): %d\n", basePinnacleSets.size());
-                        // printf("admissablePinSets.size(): %d\n\n", admissablePinSets.size());
-
-                        for(const auto& p : admissablePinSets){
-                            int validLabelingsBeforeBitFlip = 0;
-                            int validLabelingsAfterBitFlip = 0;
-
-                            g.resetValues();
-                            g.countHeapPermutations(p, GRAPH_SIZE, validLabelingsBeforeBitFlip);
-
-                            modifiedGraph.resetValues();
-                            modifiedGraph.countHeapPermutations(p, GRAPH_SIZE, validLabelingsAfterBitFlip);
-
-                            validLabelingsBeforeBitFlip += validLabelingsBeforeBitFlip;
-                            validLabelingsAfterBitFlip += validLabelingsAfterBitFlip;
-
-                            if(validLabelingsBeforeBitFlip > validLabelingsAfterBitFlip){
-                                ++res[0];
-                            } else if(validLabelingsBeforeBitFlip < validLabelingsAfterBitFlip){
-                                ++res[2];
-                            } else{ // originalGraphCount == newGraphCount
-                                ++res[1];
-                            }
-                        }
-                    }
-
-                    adj[i][j] = 1;
-                    adj[j][i] = 1;
-                }
-            }
-        }
-
-        return res;
-    }
-
-    static std::vector<std::vector<int>> generatePinnacleSets(){
-        std::vector<std::vector<int>> basePinSets;
-
-        // generate all valid pinnacle sets for g
-        // start by making all base case pin sets of size 1 <= n < GRAPH_SIZE
-        // ex { 2, 3, ..., k, GRAPH_SIZE }
-        for(size_t k = 1; k < GRAPH_SIZE; ++k){
-            std::vector<int> currPinSet(k);
-
-            for(size_t l = 0; l < k - 1; ++l){
-                currPinSet[l] = l + 2;
-            }
-
-            currPinSet[k - 1] = GRAPH_SIZE;
-            basePinSets.push_back(currPinSet);
-        }
-
-        return basePinSets;
     }
 };

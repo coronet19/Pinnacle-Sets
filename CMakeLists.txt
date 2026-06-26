@@ -25,3 +25,10 @@ set(SOURCE_FILES
 )
 
 add_executable(pinnacleSets ${SOURCE_FILES})
+
+add_executable(test_graph
+    src/test_graph.cpp
+    src/graph.hpp
+)
+enable_testing()
+add_test(NAME graph_tests COMMAND test_graph)
