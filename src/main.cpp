@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <chrono>
 
-#include "../include/CompleteGraph.h"
 #include "graph.hpp"
 
 
@@ -33,7 +32,7 @@ static bool parseRange(const std::string& s, size_t& lo, size_t& hi) {
     return lo >= 1 && hi <= 9 && lo <= hi;
 }
 
-static void runStats(size_t lo, size_t hi, bool force) {
+static void runStats(size_t lo, size_t hi, bool force, bool extra) {
     for (size_t n = lo; n <= hi; ++n) {
         std::string path = "../graphs/simple_connected_graphs/graph"
                          + std::to_string(n) + "c.g6";
@@ -71,6 +70,7 @@ int main(int argc, char** argv){
             printf("                         <range> is N or N-M where 1 <= N <= M <= 9\n");
             printf("                         Output is written to graphs/simple_connected_graphs/graphNc_stats.csv\n");
             printf("     --force             Delete existing stats file(s) and recalculate from scratch\n");
+            printf("     --extra             Logs extra info about each pinnacle set\n");
             return 0;
         } else if(arg == "-p" || arg == "--print"){
             if (idx + 1 >= args.size()) {
@@ -91,7 +91,8 @@ int main(int argc, char** argv){
                 return 1;
             }
             bool force = std::find(args.begin(), args.end(), "--force") != args.end();
-            runStats(lo, hi, force);
+            bool extra = std::find(args.begin(), args.end(), "--extra") != args.end();
+            runStats(lo, hi, force, extra);
             return 0;
         }
 

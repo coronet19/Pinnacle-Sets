@@ -51,8 +51,45 @@ private:
         return true;
     }
 
+    // Returns a bitmask with bit (label-1) set for every vertex that acts as a pinnacle under
+    // the current labeling (has neighbors, none with a greater label). This is exactly the
+    // per-vertex logic of isValidLabelingFast, but computed once instead of once per candidate
+    // pinnacle set — a labeling is valid for set P iff this mask equals P's bitmask.
+    uint64_t actualPinnacleValueMask() const {
+        uint64_t result = 0;
+        for (size_t i = 0; i < graphSize; ++i) {
+            uint64_t mask = adjMatrix[i];
+            if (mask == 0) continue; // no neighbors -> never a pinnacle (matches hasNeighbors)
+
+            int currentLabel = values[i];
+            bool hasGreaterNeighbor = false;
+            while (mask != 0) {
+                int j = std::countr_zero(mask);
+                if (values[j] > currentLabel) { hasGreaterNeighbor = true; break; }
+                mask &= mask - 1;
+            }
+
+            if (!hasGreaterNeighbor) result |= (1ULL << (currentLabel - 1));
+        }
+        return result;
+    }
+
+    // Inner Heap's algorithm — tallies the actual pinnacle value-mask of each of the n! labelings
+    // into a histogram, so a single traversal yields counts for every pinnacle set at once.
+    void computePinnacleHistogramInner(std::vector<uint64_t>& hist, int size) {
+        if (size == 1) {
+            ++hist[actualPinnacleValueMask()];
+            return;
+        }
+        for (int i = 0; i < size; i++) {
+            computePinnacleHistogramInner(hist, size - 1);
+            if (size & 1) std::swap(values[0], values[size - 1]);
+            else std::swap(values[i], values[size - 1]);
+        }
+    }
+
     // Inner Heap's algorithm — takes a precomputed mask so it isn't rebuilt at each leaf.
-    void countHeapPermutationsInner(uint64_t pinnacleValueMask, int size, int& count) {
+    void countHeapPermutationsInner(uint64_t pinnacleValueMask, int size, uint64_t& count) {
         if (size == 1) {
             if (isValidLabelingFast(pinnacleValueMask)) ++count;
             return;
@@ -66,7 +103,7 @@ private:
 
     // Multi-pinnacle inner: precomputed masks avoid rebuilding per leaf, and all sets
     // are checked in one Heap's run instead of one run per set.
-    void countHeapPermutationsInner(const std::vector<uint64_t>& masks, int size, int& count) {
+    void countHeapPermutationsInner(const std::vector<uint64_t>& masks, int size, uint64_t& count) {
         if (size == 1) {
             for (uint64_t m : masks)
                 if (isValidLabelingFast(m)) ++count;
@@ -244,7 +281,7 @@ public:
 
     // Counts labelings matching any pinnacle set in the list; precomputes masks up front
     // so they aren't rebuilt at each of the n! leaf calls.
-    void countHeapPermutations(const std::vector<std::vector<int>>& pinnacles, int size, int& count) {
+    void countHeapPermutations(const std::vector<std::vector<int>>& pinnacles, int size, uint64_t& count) {
         std::vector<uint64_t> masks;
         masks.reserve(pinnacles.size());
         for (const auto& p : pinnacles) masks.push_back(buildPinnacleMask(p));
@@ -253,8 +290,25 @@ public:
 
     // Counts labelings matching a single pinnacle set; precomputes the mask once
     // so it isn't rebuilt at each of the n! leaf calls.
-    void countHeapPermutations(const std::vector<int>& p, int size, int& count) {
+    void countHeapPermutations(const std::vector<int>& p, int size, uint64_t& count) {
         countHeapPermutationsInner(buildPinnacleMask(p), size, count);
+    }
+
+    // Counts valid labelings for every given pinnacle set in a SINGLE n! traversal.
+    // Returns counts[k] = number of labelings whose pinnacle set is exactly pinnacleSets[k].
+    // `hist` is caller-owned scratch of size (1 << graphSize), reused across calls to avoid
+    // reallocating per edge. Each leaf's actual pinnacle set is bucketed once; per-set counts
+    // are then O(1) lookups, replacing one full n! walk per pinnacle set.
+    std::vector<uint64_t> countLabelingsForAll(const std::vector<std::vector<int>>& pinnacleSets,
+                                               std::vector<uint64_t>& hist) {
+        std::fill(hist.begin(), hist.end(), 0);
+        resetValues();
+        computePinnacleHistogramInner(hist, (int)graphSize);
+
+        std::vector<uint64_t> counts(pinnacleSets.size());
+        for (size_t k = 0; k < pinnacleSets.size(); ++k)
+            counts[k] = hist[buildPinnacleMask(pinnacleSets[k])];
+        return counts;
     }
 
     void printGraph() const {
@@ -429,13 +483,15 @@ public:
         return visited_count == graphSize;
     }
 
-    // Removes each edge and counts { #decreased labelings, #same, #increased }
+    // Removes each edge and counts { #decreased labelings, #same, #increased }.
+    // Each n! traversal is shared across all admissible pinnacle sets via a histogram of
+    // actual pinnacle sets (see countLabelingsForAll), instead of one walk per set.
     static std::vector<int> analyzeStats(Graph& g, const std::vector<std::vector<int>>& basePinnacleSets) {
         std::vector<int> res(3, 0);
         std::vector<uint64_t> adj = g.adjMatrix;
 
-        // The admissible pinnacle sets and their labeling counts depend only on g, not on which
-        // edge is being removed. Compute them once here rather than once per edge.
+        // The admissible pinnacle sets depend only on g, not on which edge is being removed.
+        // Compute them once here rather than once per edge.
         std::vector<std::vector<int>> admissablePinSets;
         for (const auto& p : basePinnacleSets) {
             auto pinSets = g.getAdmissablePinnacleSets(p);
@@ -444,7 +500,53 @@ public:
                 std::make_move_iterator(pinSets.end()));
         }
 
-        std::vector<int> labelingsBefore(admissablePinSets.size(), 0);
+        // Scratch histogram indexed by pinnacle value-mask, reused across the "before" count
+        // and every edge removal. Size 1 << graphSize covers every possible mask.
+        std::vector<uint64_t> hist(1ULL << g.graphSize, 0);
+
+        std::vector<uint64_t> labelingsBefore = g.countLabelingsForAll(admissablePinSets, hist);
+
+        for (size_t i = 0; i < g.graphSize; ++i) {
+            for (size_t j = i + 1; j < g.graphSize; ++j) {
+                if ((adj[i] >> j) & 1) {
+                    adj[i] &= ~(1ULL << j);
+                    adj[j] &= ~(1ULL << i);
+
+                    Graph modifiedGraph(g.graphSize, adj);
+
+                    if (modifiedGraph.isConnected()) {
+                        std::vector<uint64_t> after = modifiedGraph.countLabelingsForAll(admissablePinSets, hist);
+                        for (size_t k = 0; k < admissablePinSets.size(); ++k) {
+                            if (labelingsBefore[k] > after[k]) ++res[0];
+                            else if (labelingsBefore[k] < after[k]) ++res[2];
+                            else ++res[1];
+                        }
+                    }
+
+                    adj[i] |= (1ULL << j);
+                    adj[j] |= (1ULL << i);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    // Reference implementation kept as a correctness/benchmark oracle for analyzeStats.
+    // Walks all n! permutations once per admissible pinnacle set (the pre-histogram approach).
+    static std::vector<int> analyzeStatsLegacy(Graph& g, const std::vector<std::vector<int>>& basePinnacleSets) {
+        std::vector<int> res(3, 0);
+        std::vector<uint64_t> adj = g.adjMatrix;
+
+        std::vector<std::vector<int>> admissablePinSets;
+        for (const auto& p : basePinnacleSets) {
+            auto pinSets = g.getAdmissablePinnacleSets(p);
+            admissablePinSets.insert(admissablePinSets.end(),
+                std::make_move_iterator(pinSets.begin()),
+                std::make_move_iterator(pinSets.end()));
+        }
+
+        std::vector<uint64_t> labelingsBefore(admissablePinSets.size(), 0);
         for (size_t k = 0; k < admissablePinSets.size(); ++k) {
             g.resetValues();
             g.countHeapPermutations(admissablePinSets[k], g.graphSize, labelingsBefore[k]);
@@ -460,7 +562,7 @@ public:
 
                     if (modifiedGraph.isConnected()) {
                         for (size_t k = 0; k < admissablePinSets.size(); ++k) {
-                            int after = 0;
+                            uint64_t after = 0;
                             modifiedGraph.resetValues();
                             modifiedGraph.countHeapPermutations(admissablePinSets[k], g.graphSize, after);
 
