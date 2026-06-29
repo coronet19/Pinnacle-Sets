@@ -62,7 +62,7 @@ void runGraphPipeline(size_t graphSize, const std::vector<int>& pinnacleSet) {
             printf("Pinnacle Set: { ");
         }
 
-        for(int i = 0; i < p.size(); ++i){
+        for(size_t i = 0; i < p.size(); ++i){
             printf("%d", p[i]);
             if(i < p.size() - 1) printf(", ");
         }
