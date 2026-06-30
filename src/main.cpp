@@ -29,7 +29,7 @@ static bool parseRange(const std::string& s, size_t& lo, size_t& hi) {
     } catch (...) {
         return false;
     }
-    return lo >= 1 && hi <= 9 && lo <= hi;
+    return lo >= 1 && hi <= 10 && lo <= hi;
 }
 
 static void runStats(size_t lo, size_t hi, bool force, bool extra) {
