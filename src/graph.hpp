@@ -13,6 +13,8 @@
 #include <atomic>
 #include <mutex>
 
+#include "tui.hpp"
+
 
 class Graph {
 private:
@@ -643,7 +645,8 @@ public:
         file.close();
     }
 
-    static void getGraphStatsFast(size_t graphSize, const std::string& path) {
+    static void getGraphStatsFast(size_t graphSize, const std::string& path,
+                                  ProgressState* progress = nullptr) {
         std::filesystem::path originalPath(path);
         std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
         newPath += "_stats.csv";
@@ -699,6 +702,16 @@ public:
 
         const std::vector<std::vector<int>> pinnacleSets = generatePinnacleSets(graphSize);
 
+        // Initialize the live-progress state (if a TUI is attached) now that the
+        // resume offset and task count are known.
+        if (progress) {
+            progress->graphSize.store(graphSize);
+            progress->total.store(numTasks);
+            progress->startCount.store(existingCount);
+            progress->processed.store(existingCount);
+            progress->startTime = std::chrono::steady_clock::now();
+        }
+
         // Worker lambda — computation is done in parallel, writes are serialized via the priority queue
         auto worker = [&]() {
             while (true) {
@@ -710,9 +723,11 @@ public:
                 // Heavy computation (no locks held here)
                 auto decoded_graph = decodeGraphG6(graphSize, currentLine);
                 Graph g(graphSize, decoded_graph);
+                if (progress) progress->setGraph(currentLine, g.adjMatrix, graphSize);
                 auto stats = Graph::analyzeStats(g, pinnacleSets);
 
                 int processed = ++numGraphsAnalyzed;
+                if (progress) progress->processed.store((size_t)processed);
 
                 // Critical section: push result and flush sequential entries to disk
                 {
@@ -732,7 +747,7 @@ public:
                     // Force OS flush so progress is safe if the process is killed
                     res.flush();
 
-                    if (processed % 100 == 0)
+                    if (!progress && processed % 100 == 0)
                         printf("Graphs of size %zu analyzed: %d\n", graphSize, processed);
                 }
             }
@@ -749,7 +764,7 @@ public:
         for (auto& t : threads)
             t.join();
 
-        if ((int)numGraphsAnalyzed % 100 != 0)
+        if (!progress && (int)numGraphsAnalyzed % 100 != 0)
             printf("Graphs of size %zu analyzed: %d\n", graphSize, (int)numGraphsAnalyzed);
 
         res.close();
