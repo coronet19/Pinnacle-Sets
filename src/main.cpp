@@ -46,10 +46,11 @@ static void runStats(size_t lo, size_t hi, bool force, bool extra, bool useTui) 
         if (force && std::filesystem::exists(statsPath)) {
             std::filesystem::remove(statsPath);
             printf("Removed existing %s\n", statsPath.c_str());
-        }
-        if (force && std::filesystem::exists(extraPath)) {
-            std::filesystem::remove(extraPath);
-            printf("Removed existing %s\n", extraPath.c_str());
+
+            if(extra){
+                std::filesystem::remove(extraPath);
+                printf("Removed existing %s\n", extraPath.c_str());
+            }
         }
 
         auto t0 = std::chrono::high_resolution_clock::now();
