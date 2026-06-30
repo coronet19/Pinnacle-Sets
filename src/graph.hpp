@@ -668,13 +668,22 @@ public:
 
     static void getGraphStatsFast(size_t graphSize, const std::string& path,
                                   ProgressState* progress = nullptr, bool extra = false) {
+        // std::filesystem::path originalPath(path);
+        // std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
+        // newPath += "_stats.csv";
+
+        // // When extra logging is enabled, per-pinnacle-set rows go to a sibling file:
+        // //   <graph6>,<pinnacle set>,<#decreased>,<#same>,<#increased>
+        // std::filesystem::path extraPath = originalPath.parent_path() / originalPath.stem();
+        // extraPath += "_stats_extra.csv";
         std::filesystem::path originalPath(path);
-        std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
+
+        std::filesystem::path statsDir = originalPath.parent_path().parent_path() / "stats";
+
+        std::filesystem::path newPath = statsDir / originalPath.stem();
         newPath += "_stats.csv";
 
-        // When extra logging is enabled, per-pinnacle-set rows go to a sibling file:
-        //   <graph6>,<pinnacle set>,<#decreased>,<#same>,<#increased>
-        std::filesystem::path extraPath = originalPath.parent_path() / originalPath.stem();
+        std::filesystem::path extraPath = statsDir / originalPath.stem();
         extraPath += "_stats_extra.csv";
 
         // 1. Read all lines into memory
