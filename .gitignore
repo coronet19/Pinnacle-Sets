@@ -47,5 +47,7 @@ build/
 # graph files
 *.g6
 *.csv
+graphs/simple_connected_graphs/graph10c.g6
+graphs/simple_connected_graphs/graph11c.g6
 graphs/simple_connected_graphs/graph10c_stats.csv
-graphs/simple_connected_graphs/graph11c_stats.csv.
+graphs/simple_connected_graphs/graph11c_stats.csv

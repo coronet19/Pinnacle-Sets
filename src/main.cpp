@@ -4,8 +4,10 @@
 #include <algorithm>
 #include <filesystem>
 #include <chrono>
+#include <unistd.h>
 
 #include "graph.hpp"
+#include "tui.hpp"
 
 
 // Simple helper to get the current time
@@ -32,7 +34,8 @@ static bool parseRange(const std::string& s, size_t& lo, size_t& hi) {
     return lo >= 1 && hi <= 10 && lo <= hi;
 }
 
-static void runStats(size_t lo, size_t hi, bool force, bool extra) {
+static void runStats(size_t lo, size_t hi, bool force, bool extra, bool useTui) {
+    (void)extra;
     for (size_t n = lo; n <= hi; ++n) {
         std::string path = "../graphs/simple_connected_graphs/graph"
                          + std::to_string(n) + "c.g6";
@@ -44,13 +47,21 @@ static void runStats(size_t lo, size_t hi, bool force, bool extra) {
             printf("Removed existing %s\n", statsPath.c_str());
         }
 
-        printf("Starting graphs with %zu vertices\n", n);
         auto t0 = std::chrono::high_resolution_clock::now();
-        Graph::getGraphStatsFast(n, path);
+        if (useTui) {
+            ProgressState progress;
+            Tui tui(progress);
+            tui.start();
+            Graph::getGraphStatsFast(n, path, &progress);
+            tui.stop();
+        } else {
+            printf("Starting graphs with %zu vertices\n", n);
+            Graph::getGraphStatsFast(n, path);
+        }
         auto t1 = std::chrono::high_resolution_clock::now();
 
         double secs = std::chrono::duration<double>(t1 - t0).count();
-        printf("Done in %.3fs\n\n", secs);
+        printf("Done with size %zu in %.3fs\n\n", n, secs);
     }
 }
 
@@ -71,6 +82,7 @@ int main(int argc, char** argv){
             printf("                         Output is written to graphs/simple_connected_graphs/graphNc_stats.csv\n");
             printf("     --force             Delete existing stats file(s) and recalculate from scratch\n");
             printf("     --extra             Logs extra info about each pinnacle set\n");
+            printf("     --no-tui            Disable the live progress display (plain log output)\n");
             return 0;
         } else if(arg == "-p" || arg == "--print"){
             if (idx + 1 >= args.size()) {
@@ -92,7 +104,11 @@ int main(int argc, char** argv){
             }
             bool force = std::find(args.begin(), args.end(), "--force") != args.end();
             bool extra = std::find(args.begin(), args.end(), "--extra") != args.end();
-            runStats(lo, hi, force, extra);
+            bool noTui = std::find(args.begin(), args.end(), "--no-tui") != args.end();
+            // Use the live display only on an interactive terminal (and unless disabled),
+            // so redirecting output to a file or pipe yields clean, escape-free logs.
+            bool useTui = !noTui && isatty(STDOUT_FILENO);
+            runStats(lo, hi, force, extra, useTui);
             return 0;
         }
 
