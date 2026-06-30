@@ -183,44 +183,23 @@ public:
         std::vector<std::vector<int>> admissable;
         std::sort(pinnacles.begin(), pinnacles.end());
 
-        // Set up all labels [1...graphSize]
-        std::vector<int> allLabels(graphSize);
-        for (int i = 0; i < (int)graphSize; ++i) allLabels[i] = i + 1;
-
-        // Independent sets depend only on graph structure and pinnacle set SIZE, not the labels.
-        // Compute once here — pinnacles.size() is invariant across all getNextPinnacleSet iterations.
-        auto indySets = this->getIndependentSets(pinnacles.size());
+        // A pinnacle set is admissible iff SOME labeling of this graph realizes it exactly.
+        // Tally the actual pinnacle set of every one of the n! labelings into a histogram once;
+        // then a candidate set is admissible iff its bucket is non-zero.
+        //
+        // The earlier approach tested a single "safe" assignment per independent set (sorted
+        // pinnacle labels on the independent set, sorted non-pinnacle labels elsewhere). That is
+        // a necessary but NOT sufficient condition: when that one arrangement failed, a set was
+        // dropped even though another labeling realized it, silently undercounting admissible sets.
+        std::vector<uint64_t> hist(1ULL << graphSize, 0);
+        this->resetValues();
+        this->computePinnacleHistogramInner(hist, (int)graphSize);
 
         do {
             if (pinnacles.empty() || pinnacles.back() != static_cast<int>(graphSize)) continue;
 
-            bool possible = false;
-
-            for (const auto& indices : indySets) {
-                // Create a list of labels that are NOT pinnacles
-                std::vector<int> nonPinnacleLabels;
-                std::set<int> pSet(pinnacles.begin(), pinnacles.end());
-                for (int l : allLabels) if (!pSet.count(l)) nonPinnacleLabels.push_back(l);
-
-                // Try a "safe" assignment: put pinnacle labels on the independent set vertices,
-                // and non-pinnacle labels everywhere else
-                this->resetValues();
-                std::vector<bool> isUsed(graphSize, false);
-                for (int idx : indices) isUsed[idx] = true;
-
-                int pIdx = 0, npIdx = 0;
-                for (int i = 0; i < (int)graphSize; ++i) {
-                    if (isUsed[i]) values[i] = pinnacles[pIdx++];
-                    else values[i] = nonPinnacleLabels[npIdx++];
-                }
-
-                if (this->isValidLabeling(pinnacles)) {
-                    possible = true;
-                    break;
-                }
-            }
-
-            if (possible) admissable.push_back(pinnacles);
+            if (hist[buildPinnacleMask(pinnacles)] > 0)
+                admissable.push_back(pinnacles);
 
         } while (Graph::getNextPinnacleSet(pinnacles, graphSize));
 
@@ -485,28 +464,62 @@ public:
         return visited_count == graphSize;
     }
 
+    // Per-pinnacle-set breakdown of the edge-removal stats, optionally produced by
+    // analyzeStats. For one admissible pinnacle set: how many edge removals decreased,
+    // kept the same, or increased the number of valid labelings.
+    struct PinSetStat {
+        std::vector<int> pinnacleSet;
+        int decreased = 0;
+        int same = 0;
+        int increased = 0;
+    };
+
     // Removes each edge and counts { #decreased labelings, #same, #increased }.
     // Each n! traversal is shared across all admissible pinnacle sets via a histogram of
     // actual pinnacle sets (see countLabelingsForAll), instead of one walk per set.
-    static std::vector<int> analyzeStats(Graph& g, const std::vector<std::vector<int>>& basePinnacleSets) {
+    //
+    // If perSet is non-null it is filled with one PinSetStat per admissible pinnacle set,
+    // giving the same decreased/same/increased breakdown but split out by pinnacle set.
+    static std::vector<int> analyzeStats(Graph& g, const std::vector<std::vector<int>>& basePinnacleSets,
+                                         std::vector<PinSetStat>* perSet = nullptr) {
         std::vector<int> res(3, 0);
         std::vector<uint64_t> adj = g.adjMatrix;
-
-        // The admissible pinnacle sets depend only on g, not on which edge is being removed.
-        // Compute them once here rather than once per edge.
-        std::vector<std::vector<int>> admissablePinSets;
-        for (const auto& p : basePinnacleSets) {
-            auto pinSets = g.getAdmissablePinnacleSets(p);
-            admissablePinSets.insert(admissablePinSets.end(),
-                std::make_move_iterator(pinSets.begin()),
-                std::make_move_iterator(pinSets.end()));
-        }
 
         // Scratch histogram indexed by pinnacle value-mask, reused across the "before" count
         // and every edge removal. Size 1 << graphSize covers every possible mask.
         std::vector<uint64_t> hist(1ULL << g.graphSize, 0);
 
-        std::vector<uint64_t> labelingsBefore = g.countLabelingsForAll(admissablePinSets, hist);
+        // Histogram of g's pinnacle sets across all n! labelings. A candidate set is admissible
+        // iff its bucket is non-zero, and that bucket IS its "before" count — so a single n!
+        // walk yields both the admissible list and the before counts (no separate per-set work,
+        // and no per-edge recompute of admissibility, which depends only on g).
+        g.resetValues();
+        g.computePinnacleHistogramInner(hist, (int)g.graphSize);
+
+        // The admissible pinnacle sets depend only on g, not on which edge is being removed.
+        // Enumerate the candidate sets (each base set and every set >= it of the same size,
+        // which together cover all pinnacle sets containing graphSize) and keep the realized ones.
+        std::vector<std::vector<int>> admissablePinSets;
+        std::vector<uint64_t> labelingsBefore;
+        for (const auto& base : basePinnacleSets) {
+            std::vector<int> p = base;
+            std::sort(p.begin(), p.end());
+            do {
+                if (p.empty() || p.back() != static_cast<int>(g.graphSize)) continue;
+                uint64_t before = hist[buildPinnacleMask(p)];
+                if (before > 0) {
+                    admissablePinSets.push_back(p);
+                    labelingsBefore.push_back(before);
+                }
+            } while (Graph::getNextPinnacleSet(p, g.graphSize));
+        }
+
+        if (perSet) {
+            perSet->clear();
+            perSet->reserve(admissablePinSets.size());
+            for (const auto& ps : admissablePinSets)
+                perSet->push_back({ps, 0, 0, 0});
+        }
 
         for (size_t i = 0; i < g.graphSize; ++i) {
             for (size_t j = i + 1; j < g.graphSize; ++j) {
@@ -519,9 +532,16 @@ public:
                     if (modifiedGraph.isConnected()) {
                         std::vector<uint64_t> after = modifiedGraph.countLabelingsForAll(admissablePinSets, hist);
                         for (size_t k = 0; k < admissablePinSets.size(); ++k) {
-                            if (labelingsBefore[k] > after[k]) ++res[0];
-                            else if (labelingsBefore[k] < after[k]) ++res[2];
-                            else ++res[1];
+                            if (labelingsBefore[k] > after[k]) {
+                                ++res[0];
+                                if (perSet) ++(*perSet)[k].decreased;
+                            } else if (labelingsBefore[k] < after[k]) {
+                                ++res[2];
+                                if (perSet) ++(*perSet)[k].increased;
+                            } else {
+                                ++res[1];
+                                if (perSet) ++(*perSet)[k].same;
+                            }
                         }
                     }
 
@@ -603,6 +623,7 @@ public:
         size_t index;
         std::string line;
         std::vector<int> stats;
+        std::vector<PinSetStat> perSet; // populated only when extra logging is enabled
         bool operator>(const TaskResult& other) const { return index > other.index; }
     };
 
@@ -646,10 +667,15 @@ public:
     }
 
     static void getGraphStatsFast(size_t graphSize, const std::string& path,
-                                  ProgressState* progress = nullptr) {
+                                  ProgressState* progress = nullptr, bool extra = false) {
         std::filesystem::path originalPath(path);
         std::filesystem::path newPath = originalPath.parent_path() / originalPath.stem();
         newPath += "_stats.csv";
+
+        // When extra logging is enabled, per-pinnacle-set rows go to a sibling file:
+        //   <graph6>,<pinnacle set>,<#decreased>,<#same>,<#increased>
+        std::filesystem::path extraPath = originalPath.parent_path() / originalPath.stem();
+        extraPath += "_stats_extra.csv";
 
         // 1. Read all lines into memory
         std::ifstream file(path);
@@ -690,6 +716,17 @@ public:
             exit(1);
         }
 
+        // Per-pinnacle-set log. Appended in lockstep with the main stats file, so resume
+        // stays consistent as long as --extra is used consistently (or with --force).
+        std::ofstream extraRes;
+        if (extra) {
+            extraRes.open(extraPath.string(), std::ios::app);
+            if (!extraRes.is_open()) {
+                std::cerr << "Error: Could not open output file at " << extraPath.string() << std::endl;
+                exit(1);
+            }
+        }
+
         // 2. Multithreading & synchronization controls
         std::atomic<size_t> nextTaskIndex{existingCount};
         std::atomic<int> numGraphsAnalyzed{(int)existingCount};
@@ -724,7 +761,8 @@ public:
                 auto decoded_graph = decodeGraphG6(graphSize, currentLine);
                 Graph g(graphSize, decoded_graph);
                 if (progress) progress->setGraph(currentLine, g.adjMatrix, graphSize);
-                auto stats = Graph::analyzeStats(g, pinnacleSets);
+                std::vector<PinSetStat> perSet;
+                auto stats = Graph::analyzeStats(g, pinnacleSets, extra ? &perSet : nullptr);
 
                 int processed = ++numGraphsAnalyzed;
                 if (progress) progress->processed.store((size_t)processed);
@@ -733,7 +771,7 @@ public:
                 {
                     std::lock_guard<std::mutex> lock(writeMtx);
 
-                    pq.push({taskIdx, currentLine, stats});
+                    pq.push({taskIdx, currentLine, std::move(stats), std::move(perSet)});
 
                     // Drain the queue as long as the lowest index matches the expected sequence
                     while (!pq.empty() && pq.top().index == nextWriteIndex) {
@@ -741,11 +779,25 @@ public:
                         pq.pop();
                         res << readyTask.line << "," << readyTask.stats[0] << ","
                             << readyTask.stats[1] << "," << readyTask.stats[2] << "\n";
+
+                        if (extra) {
+                            for (const auto& ps : readyTask.perSet) {
+                                extraRes << readyTask.line << ",[";
+                                for (size_t m = 0; m < ps.pinnacleSet.size(); ++m) {
+                                    if (m) extraRes << ' ';
+                                    extraRes << ps.pinnacleSet[m];
+                                }
+                                extraRes << "]," << ps.decreased << "," << ps.same
+                                         << "," << ps.increased << "\n";
+                            }
+                        }
+
                         nextWriteIndex++;
                     }
 
                     // Force OS flush so progress is safe if the process is killed
                     res.flush();
+                    if (extra) extraRes.flush();
 
                     if (!progress && processed % 100 == 0)
                         printf("Graphs of size %zu analyzed: %d\n", graphSize, processed);
@@ -768,5 +820,6 @@ public:
             printf("Graphs of size %zu analyzed: %d\n", graphSize, (int)numGraphsAnalyzed);
 
         res.close();
+        if (extra) extraRes.close();
     }
 };

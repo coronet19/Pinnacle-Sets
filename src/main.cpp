@@ -1,4 +1,4 @@
-#include <iostream>
+// #include <iostream>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -35,16 +35,21 @@ static bool parseRange(const std::string& s, size_t& lo, size_t& hi) {
 }
 
 static void runStats(size_t lo, size_t hi, bool force, bool extra, bool useTui) {
-    (void)extra;
     for (size_t n = lo; n <= hi; ++n) {
         std::string path = "../graphs/simple_connected_graphs/graph"
                          + std::to_string(n) + "c.g6";
         std::string statsPath = "../graphs/simple_connected_graphs/graph"
                               + std::to_string(n) + "c_stats.csv";
+        std::string extraPath = "../graphs/simple_connected_graphs/graph"
+                              + std::to_string(n) + "c_stats_extra.csv";
 
         if (force && std::filesystem::exists(statsPath)) {
             std::filesystem::remove(statsPath);
             printf("Removed existing %s\n", statsPath.c_str());
+        }
+        if (force && std::filesystem::exists(extraPath)) {
+            std::filesystem::remove(extraPath);
+            printf("Removed existing %s\n", extraPath.c_str());
         }
 
         auto t0 = std::chrono::high_resolution_clock::now();
@@ -52,11 +57,11 @@ static void runStats(size_t lo, size_t hi, bool force, bool extra, bool useTui) 
             ProgressState progress;
             Tui tui(progress);
             tui.start();
-            Graph::getGraphStatsFast(n, path, &progress);
+            Graph::getGraphStatsFast(n, path, &progress, extra);
             tui.stop();
         } else {
             printf("Starting graphs with %zu vertices\n", n);
-            Graph::getGraphStatsFast(n, path);
+            Graph::getGraphStatsFast(n, path, nullptr, extra);
         }
         auto t1 = std::chrono::high_resolution_clock::now();
 

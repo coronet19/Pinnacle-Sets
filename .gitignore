@@ -45,9 +45,9 @@ bin/
 build/
 
 # graph files
-*.g6
-*.csv
-graphs/simple_connected_graphs/graph10c.g6
-graphs/simple_connected_graphs/graph11c.g6
-graphs/simple_connected_graphs/graph10c_stats.csv
-graphs/simple_connected_graphs/graph11c_stats.csv
+graphs/simple_connected_graphs/graphs/graph10c.g6
+graphs/simple_connected_graphs/graphs/graph11c.g6
+graphs/simple_connected_graphs/stats/graph10c_stats.g6
+graphs/simple_connected_graphs/stats/graph11c_stats.g6
+graphs/simple_connected_graphs/stats/graph10c_stats_extra.g6
+graphs/simple_connected_graphs/stats/graph11c_stats_extra.g6
