@@ -351,6 +351,19 @@ public:
         }
     }
 
+    static std::vector<uint64_t> makePathGraph(size_t graphSize){
+        std::vector<uint64_t> res(graphSize, 0);
+
+        // Path graph: vertices 0-1-2-...-(n-1) form a chain. Each vertex links
+        // to its previous and next neighbor, i.e. a doubly linked list.
+        for (size_t i = 0; i < graphSize; ++i) {
+            if (i > 0)               res[i] |= (1ULL << (i - 1)); // link to previous
+            if (i + 1 < graphSize)   res[i] |= (1ULL << (i + 1)); // link to next
+        }
+
+        return res;
+    }
+
     static std::vector<uint64_t> makeCompleteGraph(size_t graphSize, const std::vector<int>& pinnacleSet) {
         std::vector<uint64_t> res(graphSize, 0);
 

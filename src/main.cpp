@@ -6,6 +6,7 @@
 #include <chrono>
 #include <unistd.h>
 
+#include "../include/permutations.h"
 #include "graph.hpp"
 #include "tui.hpp"
 
@@ -71,6 +72,29 @@ static void runStats(size_t lo, size_t hi, bool force, bool extra, bool useTui) 
     }
 }
 
+// pinnacle set : { low, low + 1, ... , graphSize - 1, graphSize }
+static void computePathGraphStats(size_t graphSize){
+    for(size_t size = 1; size <= graphSize; ++size){
+        Graph g(size, Graph::makePathGraph(size));
+
+        printf("Path graph P_%zu:\n", size);
+
+        // Contiguous-run pinnacle sets { low, low+1, ..., size } with low > 1.
+        // (A single-vertex path has no such set, so nothing is printed for size 1.)
+        for(size_t low = size / 2 + 1; low <= size; ++low){
+            std::vector<int> pinnacleSet;
+            pinnacleSet.reserve(size - low + 1);
+            for(size_t v = low; v <= size; ++v)
+                pinnacleSet.push_back(static_cast<int>(v));
+
+            uint64_t count = 0;
+            g.countHeapPermutations(pinnacleSet, static_cast<int>(size), count);
+
+            printf("  { %zu, ..., %zu }: %lu = %lld! * %lld valid labeling(s)\n", low, size, count, Permutations::factorial(size - low + 1), count / Permutations::factorial(size - low + 1));
+        }
+    }
+}
+
 int main(int argc, char** argv){
     std::vector<std::string> args(argv, argv + argc);
 
@@ -81,14 +105,15 @@ int main(int argc, char** argv){
         if(arg == "-h" || arg == "--help"){
             printf("Usage: %s [OPTIONS...]\n\n", args[0].c_str());
             printf("Options:\n");
-            printf("  -h --help              Show this help\n");
-            printf("  -p --print <g6>        Print adjacency matrix of the given g6 encoded graph\n");
-            printf("  -s --stats <range>     Compute edge-removal stats for graphs of the given size(s).\n");
-            printf("                         <range> is N or N-M where 1 <= N <= M <= 9\n");
-            printf("                         Output is written to graphs/simple_connected_graphs/graphNc_stats.csv\n");
-            printf("     --force             Delete existing stats file(s) and recalculate from scratch\n");
-            printf("     --extra             Logs extra info about each pinnacle set\n");
-            printf("     --no-tui            Disable the live progress display (plain log output)\n");
+            printf("  -h  --help               Show this help\n");
+            printf("  -p  --print <g6>         Print adjacency matrix of the given g6 encoded graph\n");
+            printf("  -pg --path_graph <size>  Print stats for all path graphs of size n <= <size>\n");
+            printf("  -s  --stats <range>      Compute edge-removal stats for graphs of the given size(s).\n");
+            printf("                           <range> is N or N-M where 1 <= N <= M <= 9\n");
+            printf("                           Output is written to graphs/simple_connected_graphs/graphNc_stats.csv\n");
+            printf("      --force              Delete existing stats file(s) and recalculate from scratch\n");
+            printf("      --extra              Logs extra info about each pinnacle set\n");
+            printf("      --no-tui             Disable the live progress display (plain log output)\n");
             return 0;
         } else if(arg == "-p" || arg == "--print"){
             if (idx + 1 >= args.size()) {
@@ -96,6 +121,27 @@ int main(int argc, char** argv){
                 return 1;
             }
             Graph::printGraph(args[idx + 1]);
+            return 0;
+        } else if(arg == "-pg" || arg == "--path_graph"){
+            if(idx + 1 >= args.size()) {
+                fprintf(stderr, "Error: --path_graph requires a graph size\n");
+                return 1;
+            }
+
+            size_t graphSize = -1;
+            try {
+                graphSize = std::stoul(args[idx + 1]);
+            } catch (...) {
+                // do nothing
+            }
+
+            if(graphSize < 1){
+                fprintf(stderr, "Error: invalid size '%s' - expected N where N > 1 \n", args[idx + 1].c_str());
+                return 1;
+            }
+
+            computePathGraphStats(graphSize);
+
             return 0;
         } else if(arg == "-s" || arg == "--stats"){
             if (idx + 1 >= args.size()) {
