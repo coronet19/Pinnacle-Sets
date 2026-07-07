@@ -5,8 +5,9 @@
 #include <filesystem>
 #include <chrono>
 #include <unistd.h>
+#include <cinttypes>
 
-#include "../include/permutations.h"
+// #include "../include/permutations.h"
 #include "graph.hpp"
 #include "tui.hpp"
 
@@ -73,27 +74,81 @@ static void runStats(size_t lo, size_t hi, bool force, bool extra, bool useTui) 
 }
 
 // pinnacle set : { low, low + 1, ... , graphSize - 1, graphSize }
+// static void computePathGraphStats(size_t graphSize){
+//     for(size_t size = 1; size <= graphSize; ++size){
+//         Graph g(size, Graph::makePathGraph(size));
+
+//         printf("Path graph P_%zu:\n", size);
+
+//         // Contiguous-run pinnacle sets { low, low+1, ..., size } with low > 1.
+//         // (A single-vertex path has no such set, so nothing is printed for size 1.)
+//         for(size_t low = size / 2 + 1; low <= size; ++low){
+//             std::vector<int> pinnacleSet;
+//             pinnacleSet.reserve(size - low + 1);
+//             for(size_t v = low; v <= size; ++v)
+//                 pinnacleSet.push_back(static_cast<int>(v));
+
+//             uint64_t count = 0;
+//             g.countHeapPermutations(pinnacleSet, static_cast<int>(size), count);
+
+//             printf("  { %zu, ..., %zu }: %lu = %d! * %lld valid labeling(s)\n", low, size, count, (int)(size - low + 1), count / Permutations::factorial(size - low + 1));
+//         }
+//     }
+// }
+
+// pinnacle set : { low, low + 1, ... , graphSize - 1, graphSize }
 static void computePathGraphStats(size_t graphSize){
-    for(size_t size = 1; size <= graphSize; ++size){
-        Graph g(size, Graph::makePathGraph(size));
+    if(graphSize < 2)
+        return;
+    const size_t maxK = (graphSize + 1) / 2;  // ceil(graphSize / 2), the largest possible pinnacle set
 
-        printf("Path graph P_%zu:\n", size);
-
-        // Contiguous-run pinnacle sets { low, low+1, ..., size } with low > 1.
-        // (A single-vertex path has no such set, so nothing is printed for size 1.)
-        for(size_t low = size / 2 + 1; low <= size; ++low){
+    // counts[n][k] = valid labelings of P_n with contiguous pinnacle set { n-k+1, ..., n }.
+    // Cells with k > ceil(n/2) stay 0, matching the zero entries in the paper's table.
+    std::vector<std::vector<uint64_t>> counts(graphSize + 1, std::vector<uint64_t>(maxK + 1, 0));
+    for(size_t n = 2; n <= graphSize; ++n){
+        Graph g(n, Graph::makePathGraph(n));
+        for(size_t k = 1; k <= (n + 1) / 2; ++k){
             std::vector<int> pinnacleSet;
-            pinnacleSet.reserve(size - low + 1);
-            for(size_t v = low; v <= size; ++v)
+            pinnacleSet.reserve(k);
+            for(size_t v = n - k + 1; v <= n; ++v)
                 pinnacleSet.push_back(static_cast<int>(v));
-
-            uint64_t count = 0;
-            g.countHeapPermutations(pinnacleSet, static_cast<int>(size), count);
-
-            printf("  { %zu, ..., %zu }: %lu = %lld! * %lld valid labeling(s)\n", low, size, count, Permutations::factorial(size - low + 1), count / Permutations::factorial(size - low + 1));
+            g.countHeapPermutations(pinnacleSet, static_cast<int>(n), counts[n][k]);
         }
     }
+
+    // Column widths: label column fits "n\k" and the largest n;
+    // each k column fits its header and its widest count.
+    size_t labelWidth = std::max(std::string("n\\k").size(), std::to_string(graphSize).size());
+    std::vector<size_t> width(maxK + 1, 0);
+    for(size_t k = 1; k <= maxK; ++k){
+        width[k] = std::to_string(k).size();
+        for(size_t n = 2; n <= graphSize; ++n)
+            width[k] = std::max(width[k], std::to_string(counts[n][k]).size());
+    }
+
+    auto printRule = [&](char fill){
+        printf("+%s+", std::string(labelWidth + 2, fill).c_str());  // extra '+' makes the "++" double bar
+        for(size_t k = 1; k <= maxK; ++k)
+            printf("+%s", std::string(width[k] + 2, fill).c_str());
+        printf("+\n");
+    };
+
+    printRule('-');
+    printf("| %*s |", (int)labelWidth, "n\\k");  // trailing '|' pairs with the next cell's '|' -> "||"
+    for(size_t k = 1; k <= maxK; ++k)
+        printf("| %*zu ", (int)width[k], k);
+    printf("|\n");
+    printRule('=');                              // double rule under the header, like \hline\hline
+
+    for(size_t n = 2; n <= graphSize; ++n){
+        printf("| %*zu |", (int)labelWidth, n);
+        for(size_t k = 1; k <= maxK; ++k)
+            printf("| %*" PRIu64 " ", (int)width[k], counts[n][k]);
+        printf("|\n");
+        printRule('-');
+    }
 }
+
 
 int main(int argc, char** argv){
     std::vector<std::string> args(argv, argv + argc);
