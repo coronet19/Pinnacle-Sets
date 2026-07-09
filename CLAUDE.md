@@ -7,11 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Out-of-source CMake build, already configured in `build/`:
 
 ```bash
-cd build && make            # build both targets
+cd build && make            # build the pinnacleSets target
 ./pinnacleSets --help       # see CLI options
-./test_graph                # run unit tests
-ctest                       # run tests via CTest
 ```
+
+There is currently no test target or test suite — `CMakeLists.txt` builds only the `pinnacleSets` executable.
 
 To rebuild from scratch:
 ```bash
@@ -26,10 +26,13 @@ The binary must be run from `build/` — paths to graph files are hardcoded as `
 ./pinnacleSets -s 5          # compute edge-removal stats for all 5-vertex graphs
 ./pinnacleSets -s 1-9        # compute stats for graphs of size 1 through 9
 ./pinnacleSets -s 7 --force  # delete existing stats file and recompute from scratch
+./pinnacleSets -s 6 --extra  # also log extra per-pinnacle-set info
+./pinnacleSets -s 6 --no-tui # plain log output (disable the live progress display)
 ./pinnacleSets -p "Bw"       # print adjacency matrix of a graph6-encoded graph
+./pinnacleSets -pg 9         # print path-graph labeling tables for P_n, n <= 9
 ```
 
-Stats output is written to `graphs/simple_connected_graphs/graphNc_stats.csv`. Processing is resumable — if the stats file already exists, it picks up where it left off.
+`-s`/`--stats` accepts a range `N` or `N-M` where `1 <= N <= M <= 10`. Stats output is written to `graphs/simple_connected_graphs/stats/graphNc_stats.csv`, reading g6 input from `graphs/simple_connected_graphs/graphs/graphNc.g6`. Processing is resumable — if the stats file already exists, it picks up where it left off.
 
 ## Architecture
 
@@ -39,9 +42,9 @@ This is a C++20 combinatorics research tool studying **pinnacle sets** of graphs
 
 - **`src/graph.hpp`** — The entire `Graph` class lives here (header-only). This is the core of the project. Adjacency is stored as `std::vector<uint64_t>` bitmasks (bit j set in `adjMatrix[i]` ↔ edge i–j exists), limiting graphs to 64 vertices.
 - **`src/main.cpp`** — CLI front-end; the main computational pipeline is `Graph::getGraphStatsFast`.
+- **`src/tui.hpp`** — Header-only live terminal progress display used during `--stats` runs on an interactive terminal (suppressed by `--no-tui` or when output is redirected).
 - **`include/CompleteGraph.h` / `src/CompleteGraph.cpp`** — Older, slower implementation using `std::vector<std::vector<int>>` edge lists; kept for comparison/validation.
 - **`include/permutations.h` / `src/permutations.cpp`** — Utility class for permutation combinatorics (superpermutations, bipartite pinnacle sets). Mostly independent of `Graph`.
-- **`src/test_graph.cpp`** — Unit tests for `Graph`; also serves as usage examples.
 
 ### Graph class internals
 
