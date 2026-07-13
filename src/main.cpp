@@ -150,6 +150,60 @@ static void computePathGraphStats(size_t graphSize){
 }
 
 
+// pinnacle set : { low, low + 1, ... , graphSize - 1, graphSize }
+static void computeCycleGraphStats(size_t graphSize){
+    if(graphSize < 3)
+        return;
+    const size_t maxK = graphSize / 2;  // floor(graphSize / 2), the largest possible pinnacle set on a cycle
+
+    // counts[n][k] = valid labelings of C_n with contiguous pinnacle set { n-k+1, ..., n }.
+    // Cells with k > floor(n/2) stay 0 (a cycle's independence number is floor(n/2)).
+    std::vector<std::vector<uint64_t>> counts(graphSize + 1, std::vector<uint64_t>(maxK + 1, 0));
+    for(size_t n = 3; n <= graphSize; ++n){
+        Graph g(n, Graph::makeCycleGraph(n));
+        for(size_t k = 1; k <= n / 2; ++k){
+            std::vector<int> pinnacleSet;
+            pinnacleSet.reserve(k);
+            for(size_t v = n - k + 1; v <= n; ++v)
+                pinnacleSet.push_back(static_cast<int>(v));
+            g.countHeapPermutations(pinnacleSet, static_cast<int>(n), counts[n][k]);
+        }
+    }
+
+    // Column widths: label column fits "n\k" and the largest n;
+    // each k column fits its header and its widest count.
+    size_t labelWidth = std::max(std::string("n\\k").size(), std::to_string(graphSize).size());
+    std::vector<size_t> width(maxK + 1, 0);
+    for(size_t k = 1; k <= maxK; ++k){
+        width[k] = std::to_string(k).size();
+        for(size_t n = 3; n <= graphSize; ++n)
+            width[k] = std::max(width[k], std::to_string(counts[n][k]).size());
+    }
+
+    auto printRule = [&](char fill){
+        printf("+%s+", std::string(labelWidth + 2, fill).c_str());  // extra '+' makes the "++" double bar
+        for(size_t k = 1; k <= maxK; ++k)
+            printf("+%s", std::string(width[k] + 2, fill).c_str());
+        printf("+\n");
+    };
+
+    printRule('-');
+    printf("| %*s |", (int)labelWidth, "n\\k");  // trailing '|' pairs with the next cell's '|' -> "||"
+    for(size_t k = 1; k <= maxK; ++k)
+        printf("| %*zu ", (int)width[k], k);
+    printf("|\n");
+    printRule('=');                              // double rule under the header, like \hline\hline
+
+    for(size_t n = 3; n <= graphSize; ++n){
+        printf("| %*zu |", (int)labelWidth, n);
+        for(size_t k = 1; k <= maxK; ++k)
+            printf("| %*" PRIu64 " ", (int)width[k], counts[n][k]);
+        printf("|\n");
+        printRule('-');
+    }
+}
+
+
 int main(int argc, char** argv){
     std::vector<std::string> args(argv, argv + argc);
 
@@ -163,6 +217,7 @@ int main(int argc, char** argv){
             printf("  -h  --help               Show this help\n");
             printf("  -p  --print <g6>         Print adjacency matrix of the given g6 encoded graph\n");
             printf("  -pg --path_graph <size>  Print stats for all path graphs of size n <= <size>\n");
+            printf("  -cg --cycle_graph <size> Print stats for all cycle graphs of size n <= <size>\n");
             printf("  -s  --stats <range>      Compute edge-removal stats for graphs of the given size(s).\n");
             printf("                           <range> is N or N-M where 1 <= N <= M <= 9\n");
             printf("                           Output is written to graphs/simple_connected_graphs/graphNc_stats.csv\n");
@@ -196,6 +251,27 @@ int main(int argc, char** argv){
             }
 
             computePathGraphStats(graphSize);
+
+            return 0;
+        } else if(arg == "-cg" || arg == "--cycle_graph"){
+            if(idx + 1 >= args.size()) {
+                fprintf(stderr, "Error: --cycle_graph requires a graph size\n");
+                return 1;
+            }
+
+            size_t graphSize = -1;
+            try {
+                graphSize = std::stoul(args[idx + 1]);
+            } catch (...) {
+                // do nothing
+            }
+
+            if(graphSize < 1){
+                fprintf(stderr, "Error: invalid size '%s' - expected N where N > 1 \n", args[idx + 1].c_str());
+                return 1;
+            }
+
+            computeCycleGraphStats(graphSize);
 
             return 0;
         } else if(arg == "-s" || arg == "--stats"){

@@ -48,3 +48,6 @@ build/
 graphs/simple_connected_graphs/stats/*
 graphs/simple_connected_graphs/graphs/graph10c.g6
 graphs/simple_connected_graphs/graphs/graph11c.g6
+
+# ai stuff
+CLAUDE.md

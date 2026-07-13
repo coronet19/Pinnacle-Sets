@@ -3,7 +3,6 @@
 #include <vector>
 #include <cassert>
 #include <algorithm>
-#include <set>
 #include <bit>
 #include <iostream>
 #include <fstream>
@@ -359,6 +358,26 @@ public:
         for (size_t i = 0; i < graphSize; ++i) {
             if (i > 0)               res[i] |= (1ULL << (i - 1)); // link to previous
             if (i + 1 < graphSize)   res[i] |= (1ULL << (i + 1)); // link to next
+        }
+
+        return res;
+    }
+
+    static std::vector<uint64_t> makeCycleGraph(size_t graphSize){
+        std::vector<uint64_t> res(graphSize, 0);
+
+        // Cycle graph: vertices 0-1-2-...-(n-1)-0 form a ring. Each vertex links
+        // to its previous and next neighbor (a doubly linked list), and the ends
+        // wrap around so vertex 0 and vertex n-1 link back to each other.
+        for (size_t i = 0; i < graphSize; ++i) {
+            if (i > 0)               res[i] |= (1ULL << (i - 1)); // link to previous
+            if (i + 1 < graphSize)   res[i] |= (1ULL << (i + 1)); // link to next
+        }
+
+        // Close the ring (needs at least 3 vertices for a genuine cycle).
+        if (graphSize >= 3) {
+            res[0]             |= (1ULL << (graphSize - 1));
+            res[graphSize - 1] |= (1ULL << 0);
         }
 
         return res;
